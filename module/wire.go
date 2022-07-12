@@ -32,3 +32,14 @@ func InitAuthMiddleware(db *gorm.DB) (m middlewares.AuthMiddleware) {
     )
     return
 }
+
+func InitUserController(db *gorm.DB, s3 *s3.Client) (c controllers.UserController) {
+    wire.Build (
+        repositories.NewUserRepositoryImpl,
+        services.NewAWSServiceImpl,
+        services.NewAuthServiceImpl,
+        services.NewUserServiceImpl,
+        controllers.NewUserControllerImpl,
+    )
+    return
+}

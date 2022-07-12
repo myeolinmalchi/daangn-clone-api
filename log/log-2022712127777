@@ -1,0 +1,35 @@
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /                         --> main.main.func1 (4 handlers)
+[GIN-debug] GET    /api/v1/products/:productId --> carrot-market-clone-api/controllers.ProductController.GetProduct-fm (4 handlers)
+[GIN-debug] GET    /api/v1/products          --> carrot-market-clone-api/controllers.ProductController.GetProducts-fm (4 handlers)
+[GIN-debug] GET    /api/v1/user/:userId/products --> carrot-market-clone-api/controllers.ProductController.GetUserProducts-fm (4 handlers)
+[GIN-debug] POST   /api/v1/user/:userId/products --> carrot-market-clone-api/controllers.ProductController.InsertProduct-fm (5 handlers)
+[GIN-debug] PUT    /api/v1/user/:userId/products/:productId --> carrot-market-clone-api/controllers.ProductController.UpdateProduct-fm (5 handlers)
+[GIN-debug] DELETE /api/v1/user/:userId/products/:productId --> carrot-market-clone-api/controllers.ProductController.DeleteProduct-fm (5 handlers)
+[GIN-debug] POST   /api/v1/user/auth/login   --> carrot-market-clone-api/controllers.UserController.Login-fm (4 handlers)
+[GIN-debug] POST   /api/v1/user              --> carrot-market-clone-api/controllers.UserController.Register-fm (4 handlers)
+[GIN-debug] PUT    /api/v1/user/:userId      --> carrot-market-clone-api/controllers.UserController.UpdateUser-fm (5 handlers)
+[GIN-debug] DELETE /api/v1/user/:userId      --> carrot-market-clone-api/controllers.UserController.DeleteUser-fm (5 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :3000
+[GIN] 2022/07/12 - 22:23:30 | 200 |      4.0413ms |             ::1 | POST     "/api/v1/user/auth/login"
+[GIN] 2022/07/12 - 22:30:55 | 200 |      3.0008ms |             ::1 | POST     "/api/v1/user/auth/login"
+[GIN] 2022/07/12 - 22:36:04 | 401 |       507.9µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:36:51 | 400 |       521.7µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:37:29 | 400 |       585.1µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:37:40 | 400 |       751.3µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:40:28 | 400 |       650.2µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:40:34 | 400 |       560.5µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:42:35 | 400 |       413.5µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:43:02 | 422 |      1.5206ms |             ::1 | POST     "/api/v1/user"
+[GIN] 2022/07/12 - 22:43:34 | 400 |       639.4µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:43:44 | 400 |       595.2µs |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:47:19 | 422 |      1.0929ms |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:47:36 | 201 |    269.0242ms |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/12 - 22:49:22 | 201 |    157.3564ms |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/13 - 01:36:21 | 201 |    505.8591ms |             ::1 | POST     "/api/v1/user/7e2cfeea-1e1f-4fd0-9542-0f802e1dd954/products"
+[GIN] 2022/07/13 - 01:38:04 | 500 |    143.1709ms |             ::1 | GET      "/api/v1/products"

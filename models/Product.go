@@ -7,9 +7,9 @@ import (
 type Product struct {
     ID          int             `json:"id,omitempty" gorm:"primaryKey"`
     Title       string          `json:"title"`
-    Content     string          `json:"content"`
-    Price       int             `json:"price,omitempty"`
-    CategoryID  int             `json:"categoryId"`
+    Content     string          `json:"content,omitempty"`
+    Price       int             `json:"price"`
+    CategoryID  int             `json:"categoryId,omitempty"`
     UserID      string          `json:"userId"`
     Regdate     time.Time       `json:"regdate,omitempty" gorm:"->"`
     Views       int             `json:"views,omitempty"`

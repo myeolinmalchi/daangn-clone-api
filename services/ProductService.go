@@ -178,7 +178,7 @@ func (s *ProductServiceImpl) DeleteProduct(userId string, productId int) (err er
 
     for _, image := range product.Images {
         //"https://~~~/images/~~~.png"
-        filename := strings.Split(image.URL, "/")[5]
+        filename := strings.Split(image.URL, "/")[4]
         _, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput {
             Bucket: aws.String(os.Getenv("AWS_S3_BUCKET")),
             Key:    aws.String("images/" + filename),

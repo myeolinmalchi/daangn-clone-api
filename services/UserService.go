@@ -4,22 +4,32 @@ import (
 	"carrot-market-clone-api/models"
 	"carrot-market-clone-api/repositories"
 	"carrot-market-clone-api/utils/encryption"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"regexp"
+	"strings"
 	"unicode"
+
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/google/uuid"
 )
 
 type UserService interface {
 
     GetUserByID(userId string)      (user *models.User, err error)
+
     GetUserByEmail(email string)    (user *models.User, err error)
+
     GetUserByPhone(phone string)    (user *models.User, err error)
 
     Login(*models.User)         (ok bool, err error)
 
-    Register(*models.User)      (ok bool, result *models.UserValidationResult)
+    UserRegistValidation(*models.User) (result *models.UserValidationResult)
 
-    Update(*models.User)        (ok bool, result *models.UserValidationResult)
+    UserUpdateValidation(*models.User) (result *models.UserValidationResult)
+
+    Register(*models.User)      (err error)
+
+    Update(*models.User)        (err error)
+
 
     Delete(userid string)       (err error)
 
@@ -27,15 +37,18 @@ type UserService interface {
 
 type UserServiceImpl struct {
     userRepo repositories.UserRepository
+    awsService  AWSService
     client *s3.Client
 }
 
 func NewUserServiceImpl(
     userRepo repositories.UserRepository,
+    awsService  AWSService,
     client *s3.Client,
 ) UserService {
     return &UserServiceImpl {
         userRepo: userRepo,
+        awsService: awsService,
         client: client,
     }
 }
@@ -108,8 +121,10 @@ func (s *UserServiceImpl) checkNickname(nickname string) *string {
     var msg string
     if len(nickname) > 30 {
         msg = "별칭은 30자 이하까지 입력할 수 있습니다."
-    } else if nickname == ""{
+    } else if len(nickname) < 1 {
         msg = "별칭은 필수 항목입니다."
+    } else if s.userRepo.CheckUserExists("nickname", nickname) {
+        msg = "이미 사용중인 별칭입니다."
     } else {
         return nil
     }
@@ -143,7 +158,7 @@ func (s *UserServiceImpl) checkPhone(phone string) *string {
     return &msg
 }
 
-func (s *UserServiceImpl) userRegistValidation(user *models.User) *models.UserValidationResult {
+func (s *UserServiceImpl) UserRegistValidation(user *models.User) *models.UserValidationResult {
     result := &models.UserValidationResult{
         PW: s.checkPW(user.PW),
         Email: s.checkEmail(user.Email),
@@ -154,7 +169,7 @@ func (s *UserServiceImpl) userRegistValidation(user *models.User) *models.UserVa
     return result.GetOrNil()
 }
 
-func (s *UserServiceImpl) userUpdateValidation(user *models.User) *models.UserValidationResult {
+func (s *UserServiceImpl) UserUpdateValidation(user *models.User) *models.UserValidationResult {
     result := &models.UserValidationResult{
         PW: s.checkPW(user.PW),
         Email: s.checkEmail(user.Email),
@@ -165,30 +180,23 @@ func (s *UserServiceImpl) userUpdateValidation(user *models.User) *models.UserVa
     return result.GetOrNil()
 }
 
-func (s *UserServiceImpl) Register(user *models.User) (ok bool, result *models.UserValidationResult) {
-    result = s.userRegistValidation(user)
-    if result == nil {
-        user.PW = encryption.EncryptSHA256(user.PW)
-        if err := s.userRepo.InsertUser(user); err != nil {
-            return false, nil
-        }
-        return true, nil
-    }
-    return false, result
+func (s *UserServiceImpl) Register(user *models.User) (err error) {
+    user.ID = uuid.NewString()
+    user.PW = encryption.EncryptSHA256(user.PW)
+    return s.userRepo.InsertUser(user)
 }
 
-func (s *UserServiceImpl) Update(user *models.User) (ok bool, result *models.UserValidationResult) {
-    result = s.userUpdateValidation(user)
-    if result == nil {
-        user.PW = encryption.EncryptSHA256(user.PW)
-        if err := s.userRepo.InsertUser(user); err != nil {
-            return false, nil
-        }
-        return true, nil
-    }
-    return false, result
+func (s *UserServiceImpl) Update(user *models.User) (err error) {
+    return s.userRepo.UpdateUser(user)
 }
 
 func (s *UserServiceImpl) Delete(userId string) (err error) {
+    user, err := s.userRepo.GetUser("id", userId)
+    if err != nil { return }
+
+    filename := strings.Split(user.ProfileImage, "/")[4]
+
+    s.awsService.DeleteFile(filename)
+
     return s.userRepo.DeleteUser(userId)
 }

@@ -61,6 +61,7 @@ func main() {
     route.Use(gin.Recovery())
 
     productController := module.InitProductController(db, s3)
+    userController := module.InitUserController(db, s3)
     authMiddleware := module.InitAuthMiddleware(db)
 
     route.GET("/", func(c *gin.Context) {
@@ -74,8 +75,15 @@ func main() {
         
         v1.GET("/user/:userId/products", productController.GetUserProducts)
         v1.POST("/user/:userId/products", authMiddleware.UserAuth, productController.InsertProduct)
-        v1.PUT("/user/:useId/products/:productId", authMiddleware.UserAuth, productController.UpdateProduct)
+        v1.PUT("/user/:userId/products/:productId", authMiddleware.UserAuth, productController.UpdateProduct)
         v1.DELETE("/user/:userId/products/:productId", authMiddleware.UserAuth, productController.DeleteProduct)
+
+        v1.POST("/user/auth/login", userController.Login)
+        v1.POST("/user", userController.Register)
+        v1.PUT("/user/:userId", authMiddleware.UserAuth, userController.UpdateUser)
+        v1.DELETE("/user/:userId", authMiddleware.UserAuth, userController.DeleteUser)
     }
+    route.Run(":3000")
+    
     
 }

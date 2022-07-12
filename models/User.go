@@ -11,11 +11,11 @@ type User struct {
 }
 
 type UserValidationResult struct {
-    PW              *string     `json:"pw"`
-    Email           *string     `json:"email"`
-    Phone           *string     `json:"phone"`
-    Name            *string     `json:"name"`
-    Nickname        *string     `json:"nickname"`
+    PW              *string     `json:"pw,omitempty"`
+    Email           *string     `json:"email,omitempty"`
+    Phone           *string     `json:"phone,omitempty"`
+    Name            *string     `json:"name,omitempty"`
+    Nickname        *string     `json:"nickname,omitempty"`
 }
 
 func (r *UserValidationResult) GetOrNil() *UserValidationResult {

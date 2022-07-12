@@ -109,7 +109,7 @@ func (p *ProductControllerImpl) InsertProduct(c *gin.Context) {
             c.JSON(400, gin.H{"message": err.Error()})
         }
         for _, image := range product.Images {
-            filename := strings.Split("/", image.URL)[5]
+            filename := strings.Split("/", image.URL)[4]
             _, err = p.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
                 Bucket: aws.String(os.Getenv("AWS_S3_BUCKET")),
                 Key: aws.String("images/" + filename),
@@ -199,18 +199,24 @@ func (p *ProductControllerImpl) GetProducts(c *gin.Context) {
 
     if keywordStr, keywordExists := c.GetQuery("keyword"); keywordExists {
         keyword = &keywordStr
+    } else {
+        keyword = nil
     }
 
     if categoryStr, categoryExists := c.GetQuery("category"); categoryExists {
         temp, err := strconv.Atoi(categoryStr)
         if err != nil { c.JSON(400, gin.H{"message": err}); return }
         category = &temp
+    } else {
+        category = nil
     }
 
     if lastStr, lastExists := c.GetQuery("last"); lastExists {
         temp, err := strconv.Atoi(lastStr)
         if err != nil { c.JSON(400, gin.H{"message": err}); return }
         last = &temp
+    } else {
+        last = nil
     }
 
     getProductsFuncMap := map[string]services.GetProductsFunc {
@@ -233,9 +239,7 @@ func (p *ProductControllerImpl) GetProducts(c *gin.Context) {
     if err != nil { c.JSON(400, gin.H{"message": err}); return }
 
     c.IndentedJSON(200, gin.H {
-        "keyword": *keyword,
         "size": size,
-        "category": *category,
         "products": products,
     })
 

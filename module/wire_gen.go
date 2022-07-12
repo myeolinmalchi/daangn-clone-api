@@ -31,3 +31,12 @@ func InitAuthMiddleware(db *gorm.DB) middlewares.AuthMiddleware {
 	authMiddleware := middlewares.NewAuthMiddlewareImpl(authService)
 	return authMiddleware
 }
+
+func InitUserController(db *gorm.DB, s3_2 *s3.Client) controllers.UserController {
+	userRepository := repositories.NewUserRepositoryImpl(db)
+	awsService := services.NewAWSServiceImpl(s3_2)
+	userService := services.NewUserServiceImpl(userRepository, awsService, s3_2)
+	authService := services.NewAuthServiceImpl(userRepository)
+	userController := controllers.NewUserControllerImpl(userService, authService, awsService, s3_2)
+	return userController
+}

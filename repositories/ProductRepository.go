@@ -110,7 +110,7 @@ func (r *ProductRepositoryImpl) GetProducts(
     }
 
     err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
-        return db.Order("product_images.sequence ASC").Limit(1)
+        return db.Order("product_images.sequence ASC")
     }).Limit(size).Find(&products).Error
 
     return
