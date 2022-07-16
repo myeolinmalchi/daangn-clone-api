@@ -73,15 +73,20 @@ func main() {
         v1.GET("/products/:productId", productController.GetProduct)
         v1.GET("/products", productController.GetProducts)
         
-        v1.GET("/user/:userId/products", productController.GetUserProducts)
-        v1.POST("/user/:userId/products", authMiddleware.UserAuth, productController.InsertProduct)
-        v1.PUT("/user/:userId/products/:productId", authMiddleware.UserAuth, productController.UpdateProduct)
-        v1.DELETE("/user/:userId/products/:productId", authMiddleware.UserAuth, productController.DeleteProduct)
+        v1.GET("/users/:userId/products", productController.GetUserProducts)
+        v1.POST("/users/:userId/products", authMiddleware.UserAuth, productController.InsertProduct)
+        v1.PUT("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.UpdateProduct)
+        v1.DELETE("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.DeleteProduct)
 
-        v1.POST("/user/auth/login", userController.Login)
-        v1.POST("/user", userController.Register)
-        v1.PUT("/user/:userId", authMiddleware.UserAuth, userController.UpdateUser)
-        v1.DELETE("/user/:userId", authMiddleware.UserAuth, userController.DeleteUser)
+        v1.GET("/users/:userId/products_wish", authMiddleware.UserAuth, productController.GetWishProducts)
+
+        v1.POST("/users/:userId/products/:productId/wish", authMiddleware.UserAuth, productController.WishProduct)
+        v1.DELETE("/users/:userId/products/:productId/wish", authMiddleware.UserAuth, productController.DeleteWish)
+
+        v1.POST("/users/auth/login", userController.Login)
+        v1.POST("/users", userController.Register)
+        v1.PUT("/users/:userId", authMiddleware.UserAuth, userController.UpdateUser)
+        v1.DELETE("/users/:userId", authMiddleware.UserAuth, userController.DeleteUser)
     }
     route.Run(":3000")
     

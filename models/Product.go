@@ -14,7 +14,7 @@ type Product struct {
     Regdate     time.Time       `json:"regdate,omitempty" gorm:"->"`
     Views       int             `json:"views,omitempty"`
 
-    Wishes      int             `json:"wishes,omitempty" gorm:"->"`
+    Wishes      int             `json:"wishes" gorm:"->"`
 
     Images      []ProductImage  `json:"images" gorm:"foreignKey:ProductID"`
 }
@@ -24,6 +24,12 @@ type ProductImage struct {
     ID          int             `json:"id,omitempty"`
     URL         string          `json:"url"`
     Sequence    int             `json:"sequence"`
+}
+
+type Wish struct {
+    ProductID   int             `json:"productId"`
+    ID          int             `json:"id"`
+    UserID      string          `json:"userId"`
 }
 
 type ProductValidationResult struct {

@@ -18,6 +18,7 @@ func InitProductController(db *gorm.DB, s3 *s3.Client) (c controllers.ProductCon
     wire.Build(
         repositories.NewProductRepositoryImpl,
         repositories.NewUserRepositoryImpl,
+        services.NewAWSServiceImpl,
         services.NewProductServiceImpl,
         controllers.NewProductControllerImpl,
     )

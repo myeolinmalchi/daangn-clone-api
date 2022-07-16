@@ -20,7 +20,8 @@ import (
 func InitProductController(db *gorm.DB, s3_2 *s3.Client) controllers.ProductController {
 	productRepository := repositories.NewProductRepositoryImpl(db)
 	userRepository := repositories.NewUserRepositoryImpl(db)
-	productSerivce := services.NewProductServiceImpl(productRepository, userRepository, s3_2)
+	awsService := services.NewAWSServiceImpl(s3_2)
+	productSerivce := services.NewProductServiceImpl(productRepository, userRepository, awsService, s3_2)
 	productController := controllers.NewProductControllerImpl(s3_2, productSerivce)
 	return productController
 }

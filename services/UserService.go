@@ -4,9 +4,12 @@ import (
 	"carrot-market-clone-api/models"
 	"carrot-market-clone-api/repositories"
 	"carrot-market-clone-api/utils/encryption"
+	"mime/multipart"
 	"regexp"
 	"strings"
 	"unicode"
+    "fmt"
+    "os"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
@@ -22,14 +25,15 @@ type UserService interface {
 
     Login(*models.User)         (ok bool, err error)
 
-    UserRegistValidation(*models.User) (result *models.UserValidationResult)
+    Register(
+        file multipart.File,
+        user *models.User,
+    )                           (result *models.UserValidationResult, err error)
 
-    UserUpdateValidation(*models.User) (result *models.UserValidationResult)
-
-    Register(*models.User)      (err error)
-
-    Update(*models.User)        (err error)
-
+    Update(
+        file multipart.File,
+        user *models.User,
+    )                           (result *models.UserValidationResult, err error)
 
     Delete(userid string)       (err error)
 
@@ -158,7 +162,7 @@ func (s *UserServiceImpl) checkPhone(phone string) *string {
     return &msg
 }
 
-func (s *UserServiceImpl) UserRegistValidation(user *models.User) *models.UserValidationResult {
+func (s *UserServiceImpl) userRegistValidation(user *models.User) *models.UserValidationResult {
     result := &models.UserValidationResult{
         PW: s.checkPW(user.PW),
         Email: s.checkEmail(user.Email),
@@ -169,7 +173,7 @@ func (s *UserServiceImpl) UserRegistValidation(user *models.User) *models.UserVa
     return result.GetOrNil()
 }
 
-func (s *UserServiceImpl) UserUpdateValidation(user *models.User) *models.UserValidationResult {
+func (s *UserServiceImpl) userUpdateValidation(user *models.User) *models.UserValidationResult {
     result := &models.UserValidationResult{
         PW: s.checkPW(user.PW),
         Email: s.checkEmail(user.Email),
@@ -180,14 +184,63 @@ func (s *UserServiceImpl) UserUpdateValidation(user *models.User) *models.UserVa
     return result.GetOrNil()
 }
 
-func (s *UserServiceImpl) Register(user *models.User) (err error) {
+func (s *UserServiceImpl) Register(
+    file multipart.File,
+    user *models.User,
+) (result *models.UserValidationResult, err error) {
+
+    result = s.userRegistValidation(user)
+    if result != nil { return }
+
+    filename, err := s.awsService.UploadFile(file)
+    if err != nil { return }
+
+    url := fmt.Sprintf("https://%s/images/%s", os.Getenv("AWS_S3_DOMAIN"), filename)
+    user.ProfileImage = url
+
     user.ID = uuid.NewString()
     user.PW = encryption.EncryptSHA256(user.PW)
-    return s.userRepo.InsertUser(user)
+    err = s.userRepo.InsertUser(user)
+
+    if err != nil {
+        if err := s.awsService.DeleteFile(filename); err != nil {
+            return nil, err
+        }
+        return nil, err
+    }
+
+    return
 }
 
-func (s *UserServiceImpl) Update(user *models.User) (err error) {
-    return s.userRepo.UpdateUser(user)
+func (s *UserServiceImpl) Update(
+    file multipart.File, 
+    user *models.User,
+) (result *models.UserValidationResult, err error) {
+
+    beforeUserInfo, err := s.userRepo.GetUser("id", user.ID)
+    if err != nil { return }
+    
+    result = s.userUpdateValidation(user)
+    if result != nil { return }
+
+    filename, err := s.awsService.UploadFile(file)
+    if err != nil { return }
+
+    url := fmt.Sprintf("https://%s/images/%s", os.Getenv("AWS_S3_DOMAIN"), filename)
+    user.ProfileImage = url
+
+    err = s.userRepo.UpdateUser(user)
+    if err != nil {
+        if err := s.awsService.DeleteFile(filename); err != nil {
+            return nil, err
+        }
+        return nil, err
+    }
+
+    beforeFilename := strings.Split(beforeUserInfo.ProfileImage, "/")[4]
+    s.awsService.DeleteFile(beforeFilename)
+
+    return
 }
 
 func (s *UserServiceImpl) Delete(userId string) (err error) {

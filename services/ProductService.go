@@ -3,13 +3,14 @@ package services
 import (
 	"carrot-market-clone-api/models"
 	"carrot-market-clone-api/repositories"
-	"gorm.io/gorm"
-	"context"
+	"fmt"
 	"log"
+	"mime/multipart"
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
+	"gorm.io/gorm"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -32,15 +33,24 @@ type ProductSerivce interface {
 
     GetProductsOrderByPrice(asc bool)       GetProductsFunc
 
-    GetProductsOrderByRegdate(asc bool)     GetProductsFunc
+    GetProductsOrderByID(asc bool)          GetProductsFunc
 
     GetUserProductsOrderByPrice(asc bool)   GetUserProductsFunc
 
-    GetUserProductsOrderByRegdate(asc bool) GetUserProductsFunc
+    GetUserProductsOrderByID(asc bool)      GetUserProductsFunc
+
+    GetWishProducts(
+        userId string,
+        last *int,
+        size int,
+    )                                       (products []models.Product, count int, err error)
 
     ValidateProduct(prod *models.Product)   (result *models.ProductValidationResult)
 
-    InsertProduct(product *models.Product)  (err error)
+    InsertProduct(
+        files []multipart.File,
+        product *models.Product,
+    )                                       (result *models.ProductValidationResult, err error)
 
     UpdateProduct(product *models.Product)  (err error)
 
@@ -49,22 +59,29 @@ type ProductSerivce interface {
         productId int,
     )                                       (err error)
 
+    WishProduct(wish *models.Wish)          (exists bool, err error)
+
+    DeleteWish(wish *models.Wish)           (err error)
+
 }
 
 type ProductServiceImpl struct {
     productRepo repositories.ProductRepository
     userRepo repositories.UserRepository
+    awsService AWSService
     client *s3.Client
 }
 
 func NewProductServiceImpl(
     productRepo repositories.ProductRepository,
     userRepo repositories.UserRepository, 
+    awsService AWSService,
     client *s3.Client,
 ) ProductSerivce {
     return &ProductServiceImpl{ 
         productRepo: productRepo,
         userRepo: userRepo,
+        awsService: awsService,
         client: client,
     }
 }
@@ -81,8 +98,8 @@ func (s *ProductServiceImpl) GetProductsOrderByPrice(asc bool) GetProductsFunc {
     }
 }
 
-func (s *ProductServiceImpl) GetProductsOrderByRegdate(asc bool) GetProductsFunc {
-    orderBy := "regdate"
+func (s *ProductServiceImpl) GetProductsOrderByID(asc bool) GetProductsFunc {
+    orderBy := "id"
     if !asc { orderBy = orderBy + " DESC" }
     return func(keyword *string, categoryId *int, last *int, size int) (products []models.Product, count int, err error) {
         return s.productRepo.GetProducts(keyword, categoryId, last, size, orderBy)
@@ -100,8 +117,8 @@ func (s *ProductServiceImpl)  GetUserProductsOrderByPrice(asc bool) GetUserProdu
     }
 }
 
-func (s *ProductServiceImpl)  GetUserProductsOrderByRegdate(asc bool) GetUserProductsFunc {
-    orderBy := "regdate"
+func (s *ProductServiceImpl)  GetUserProductsOrderByID(asc bool) GetUserProductsFunc {
+    orderBy := "id"
     if !asc { orderBy = orderBy + " DESC" }
     return func(userId string, last *int, size int) (products []models.Product, count int, err error) {
         if !s.userRepo.CheckUserExists("id", userId) {
@@ -109,6 +126,14 @@ func (s *ProductServiceImpl)  GetUserProductsOrderByRegdate(asc bool) GetUserPro
         }
         return s.productRepo.GetProductsByUserID(userId, last, size, orderBy)
     }
+}
+
+func (s *ProductServiceImpl) GetWishProducts(
+    userId string,
+    last *int,
+    size int,
+) (products []models.Product, count int, err error) {
+    return s.productRepo.GetWishProducts(userId, last, size)
 }
 
 func (s *ProductServiceImpl) ValidateProduct(product *models.Product) (result *models.ProductValidationResult) {
@@ -158,17 +183,45 @@ func (s *ProductServiceImpl) ValidateProduct(product *models.Product) (result *m
     return result.GetOrNil()
 }
 
-func (s *ProductServiceImpl) InsertProduct(product *models.Product) (err error) {
-    if !s.userRepo.CheckUserExists("id", product.UserID) {
-        return gorm.ErrRecordNotFound
+func (s *ProductServiceImpl) InsertProduct(
+    files []multipart.File,
+    product *models.Product,
+) (result *models.ProductValidationResult, err error) {
+
+    result = s.ValidateProduct(product)
+
+    if result != nil { return }
+
+    for index, file := range files {
+        filename, err := s.awsService.UploadFile(file)
+        if err != nil { return nil, err }
+
+        url := fmt.Sprintf("https://%s/images/%s", os.Getenv("AWS_S3_DOMAIN"), filename)
+        product.Images = append(product.Images, models.ProductImage {
+            URL: url,
+            Sequence: index + 1,
+        })
     }
+
     err = s.productRepo.InsertProduct(product)
+
+    if err != nil {
+        for _, image := range product.Images {
+            filename := strings.Split("/", image.URL)[4]
+            err := s.awsService.DeleteFile(filename)
+            if err != nil { log.Println(err) } 
+        }
+    }
+
     return
 }
+
+// TODO: 구현
 func (s *ProductServiceImpl) UpdateProduct(product *models.Product) (err error) {
     err = s.productRepo.UpdateProduct(product)
     return
 }
+
 func (s *ProductServiceImpl) DeleteProduct(userId string, productId int) (err error) {
     product, err :=  s.productRepo.GetProduct(productId)
     if err != nil { return }
@@ -179,10 +232,7 @@ func (s *ProductServiceImpl) DeleteProduct(userId string, productId int) (err er
     for _, image := range product.Images {
         //"https://~~~/images/~~~.png"
         filename := strings.Split(image.URL, "/")[4]
-        _, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput {
-            Bucket: aws.String(os.Getenv("AWS_S3_BUCKET")),
-            Key:    aws.String("images/" + filename),
-        })
+        err := s.awsService.DeleteFile(filename)
         if err != nil {
             log.Println(err)
         } else {
@@ -192,4 +242,27 @@ func (s *ProductServiceImpl) DeleteProduct(userId string, productId int) (err er
     return
 }
 
+
+func (s *ProductServiceImpl) WishProduct(wish *models.Wish) (exists bool, err error) {
+    exists = s.productRepo.CheckWishExists(wish)
+    if exists { return }
+
+    if userExists := s.userRepo.CheckUserExists("id", wish.UserID); !userExists {
+        err = gorm.ErrRecordNotFound
+        return
+    }
+
+    if productExists := s.productRepo.CheckProductExists(wish.ProductID); !productExists {
+        err = gorm.ErrRecordNotFound
+        return
+    }
+
+    err = s.productRepo.InsertWish(wish)
+    return
+}
+
+func (s *ProductServiceImpl) DeleteWish(wish *models.Wish) (err error) {
+    err = s.productRepo.DeleteWish(wish)
+    return
+}
 

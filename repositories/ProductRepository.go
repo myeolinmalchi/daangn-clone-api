@@ -24,6 +24,12 @@ type ProductRepository interface {
         orderBy ... string,
     )                                       (products []models.Product, count int, err error)
 
+    GetWishProducts (
+        userId string,
+        last *int,
+        size int,
+    )                                       (products []models.Product, count int, err error)
+
     InsertProduct(product *models.Product)  (err error)
 
     UpdateProduct(product *models.Product)  (err error)
@@ -33,6 +39,12 @@ type ProductRepository interface {
     CheckProductExists(productId int)       (exists bool)
 
     GetOwnerId(productId int)               (userId string)
+
+    CheckWishExists(wish *models.Wish)      (exists bool)
+
+    InsertWish(wish *models.Wish)           (err error)
+
+    DeleteWish(wish *models.Wish)           (err error)
 }
 
 type ProductRepositoryImpl struct {
@@ -116,6 +128,30 @@ func (r *ProductRepositoryImpl) GetProducts(
     return
 }
 
+func (r *ProductRepositoryImpl) GetWishProducts(
+    userId string,
+    last *int,
+    size int,
+) (products []models.Product, count int, err error) {
+    
+    products = []models.Product{}
+
+    query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views").
+        Preload("Images", func(db *gorm.DB) *gorm.DB {
+            return db.Order("product_images.sequence ASC")
+        }).
+        Joins("JOIN wishes ON v_products.id = wishes.product_id").
+        Order("v_products.id desc")
+
+    if last != nil {
+        query = query.Where("wishes.product_id < ?", last)
+    }
+
+    err = query.Where("wishes.user_id = ?", userId).Limit(size).Find(&products).Error
+
+    return
+}
+
 func (r *ProductRepositoryImpl) InsertProduct(product *models.Product) (err error) {
     err = r.db.Create(product).Error
     return
@@ -149,6 +185,24 @@ func (r *ProductRepositoryImpl) CheckProductExists(productId int) (exists bool) 
 
 func (r *ProductRepositoryImpl) GetOwnerId(productId int) (userId string) {
     r.db.Model(&models.Product{}).Select("user_id").Where("id = ?", productId).Find(&userId)
+    return
+}
+
+func (r *ProductRepositoryImpl) InsertWish(wish *models.Wish) (err error) {
+    err = r.db.Create(wish).Error
+    return
+}
+
+func (r *ProductRepositoryImpl) DeleteWish(wish *models.Wish) (err error) {
+    err = r.db.Delete(models.Wish{}, "user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).Error
+    return
+}
+
+func (r *ProductRepositoryImpl) CheckWishExists(wish *models.Wish) (exists bool) {
+    r.db.Table("wishes").
+        Select("count(*) > 0").
+        Where("user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).
+        Find(&exists)
     return
 }
 
