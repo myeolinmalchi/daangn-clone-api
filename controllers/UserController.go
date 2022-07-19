@@ -83,7 +83,7 @@ func (u *UserControllerImpl) Register(c *gin.Context) {
     form := UserForm{}
 
     if err := c.ShouldBind(&form); err != nil {
-        c.JSON(400, gin.H{"message": err})
+        c.JSON(400, gin.H{"message": err.Error()})
         return
     }
 
@@ -91,13 +91,13 @@ func (u *UserControllerImpl) Register(c *gin.Context) {
     err := json.Unmarshal([]byte(form.Json), user)
 
     if err != nil {
-        c.JSON(400, gin.H{"message": err})
+        c.JSON(400, gin.H{"message": err.Error()})
         return
     }
 
     file, err := form.File.Open()
     if err != nil {
-        c.JSON(400, gin.H{"message": err})
+        c.JSON(400, gin.H{"message": err.Error()})
         return
     }
 
