@@ -192,24 +192,39 @@ func (s *UserServiceImpl) Register(
     result = s.userRegistValidation(user)
     if result != nil { return }
 
-    filename, err := s.awsService.UploadFile(file)
-    if err != nil { return }
+    if file == nil {
+        
+        url :=fmt.Sprintf("https://%s/images/default_profile_image", os.Getenv("AWS_S3_DOMAIN"))
+        user.ProfileImage = url
+        user.ID = uuid.NewString()
+        user.PW = encryption.EncryptSHA256(user.PW)
+        err = s.userRepo.InsertUser(user)
 
-    url := fmt.Sprintf("https://%s/images/%s", os.Getenv("AWS_S3_DOMAIN"), filename)
-    user.ProfileImage = url
-
-    user.ID = uuid.NewString()
-    user.PW = encryption.EncryptSHA256(user.PW)
-    err = s.userRepo.InsertUser(user)
-
-    if err != nil {
-        if err := s.awsService.DeleteFile(filename); err != nil {
+        if err != nil {
             return nil, err
         }
-        return nil, err
-    }
 
-    return
+        return result, err
+    } else {
+        filename, err := s.awsService.UploadFile(file)
+        if err != nil { return result, err }
+
+        url := fmt.Sprintf("https://%s/images/%s", os.Getenv("AWS_S3_DOMAIN"), filename)
+        user.ProfileImage = url
+
+        user.ID = uuid.NewString()
+        user.PW = encryption.EncryptSHA256(user.PW)
+        err = s.userRepo.InsertUser(user)
+
+        if err != nil {
+            if err := s.awsService.DeleteFile(filename); err != nil {
+                return nil, err
+            }
+            return nil, err
+        }
+
+        return result, err
+    }
 }
 
 func (s *UserServiceImpl) Update(

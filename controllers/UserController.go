@@ -73,7 +73,7 @@ func (u *UserControllerImpl) Login(c *gin.Context) {
 }
 
 type UserForm struct {
-    File        *multipart.FileHeader       `form:"file" binding:"required"`
+    File        *multipart.FileHeader       `form:"file" binding:"omitempty"`
     Json        string                      `form:"json" binding:"required"`
 }
 
@@ -95,13 +95,18 @@ func (u *UserControllerImpl) Register(c *gin.Context) {
         return
     }
 
-    file, err := form.File.Open()
-    if err != nil {
-        c.JSON(400, gin.H{"message": err.Error()})
-        return
-    }
+    validationResult := &models.UserValidationResult{}
 
-    validationResult, err := u.userService.Register(file, user)
+    if form.File == nil {
+        validationResult, err = u.userService.Register(nil, user)
+    } else {
+        file, err := form.File.Open()
+        if err != nil {
+            c.JSON(400, gin.H{"message": err.Error()})
+            return
+        }
+        validationResult, err = u.userService.Register(file, user)
+    }
     
     if validationResult != nil {
         c.IndentedJSON(422, validationResult)
