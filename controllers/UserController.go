@@ -17,6 +17,7 @@ type UserController interface {
     Register(c *gin.Context)
     UpdateUser(c *gin.Context)
     DeleteUser(c *gin.Context)
+    GetUserData(c *gin.Context)
 }
 
 type UserControllerImpl struct {
@@ -39,7 +40,7 @@ func NewUserControllerImpl(
         client: client,
     }
 }
-// POST /api/v1/user/auth/login
+// POST /api/v1/users/auth/login
 func (u *UserControllerImpl) Login(c *gin.Context) {
     user := &models.User{}
     err := c.ShouldBind(user)
@@ -122,7 +123,7 @@ func (u *UserControllerImpl) Register(c *gin.Context) {
 
 }
 
-// PUT /api/v1/user/{userId}
+// PUT /api/v1/users/{userId}
 func (u *UserControllerImpl) UpdateUser(c *gin.Context) {
 
     form := UserForm{}
@@ -167,6 +168,7 @@ func (u *UserControllerImpl) UpdateUser(c *gin.Context) {
     c.Status(200)
 }
 
+// DELETE /api/v1/users/{userId}
 func (u *UserControllerImpl) DeleteUser(c *gin.Context) {
     userId := c.Param("userId")
     
@@ -179,4 +181,23 @@ func (u *UserControllerImpl) DeleteUser(c *gin.Context) {
         c.JSON(400, gin.H{"message": err})
         return
     }
+
+    c.Status(200)
+}
+
+// GET /api/v1/users/{userId}
+func (u *UserControllerImpl) GetUserData(c *gin.Context) {
+    userId := c.Param("userId")
+
+    user, err := u.userService.GetUserByID(userId)
+
+    if err == gorm.ErrRecordNotFound {
+        c.Status(404)
+        return
+    } else if err != nil {
+        c.JSON(400, gin.H{"message": err})
+        return
+    }
+
+    c.IndentedJSON(200, user)
 }

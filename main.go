@@ -85,6 +85,7 @@ func main() {
 
         v1.POST("/users/auth/login", userController.Login)
         v1.POST("/users", userController.Register)
+        v1.GET("/users/:userId", authMiddleware.UserAuth, userController.GetUserData)
         v1.PUT("/users/:userId", authMiddleware.UserAuth, userController.UpdateUser)
         v1.DELETE("/users/:userId", authMiddleware.UserAuth, userController.DeleteUser)
     }
