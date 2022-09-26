@@ -60,7 +60,7 @@ func NewProductRepositoryImpl(
 func (r *ProductRepositoryImpl) GetProduct(productId int) (product *models.Product, err error) {
 	product = &models.Product{}
 	err = r.db.Table("v_products").Preload("Images", func(db *gorm.DB) *gorm.DB {
-		return db.Order("product_images.sequence ASC")
+		return db.Omit("ProductID").Order("product_images.sequence ASC")
 	}).Where("id = ?", productId).First(product).Error
 	return
 }
@@ -122,7 +122,7 @@ func (r *ProductRepositoryImpl) GetProducts(
 	}
 
 	err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
-		return db.Order("product_images.sequence ASC")
+		return db.Omit("ProductID").Order("product_images.sequence ASC")
 	}).Limit(size).Find(&products).Error
 
 	return
