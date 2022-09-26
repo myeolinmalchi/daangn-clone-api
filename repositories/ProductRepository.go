@@ -138,7 +138,7 @@ func (r *ProductRepositoryImpl) GetWishProducts(
 
 	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views").
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
-			return db.Order("product_images.sequence ASC")
+			return db.Omit("ProductID").Order("product_images.sequence ASC")
 		}).
 		Joins("JOIN wishes ON v_products.id = wishes.product_id").
 		Order("v_products.id desc")
