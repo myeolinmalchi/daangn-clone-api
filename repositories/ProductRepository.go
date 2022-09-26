@@ -7,202 +7,201 @@ import (
 )
 
 type ProductRepository interface {
-    GetProduct(postId int)                  (product *models.Product, err error)
+	GetProduct(postId int) (product *models.Product, err error)
 
-    GetProductsByUserID(
-        userId string,
-        last *int,
-        size int,
-        orderBy ... string,
-    )                                       (products []models.Product, count int, err error)
+	GetProductsByUserID(
+		userId string,
+		last *int,
+		size int,
+		orderBy ...string,
+	) (products []models.Product, count int, err error)
 
-    GetProducts(
-        keyword *string,
-        categoryId *int,
-        last *int,
-        size int,
-        orderBy ... string,
-    )                                       (products []models.Product, count int, err error)
+	GetProducts(
+		keyword *string,
+		categoryId *int,
+		last *int,
+		size int,
+		orderBy ...string,
+	) (products []models.Product, count int, err error)
 
-    GetWishProducts (
-        userId string,
-        last *int,
-        size int,
-    )                                       (products []models.Product, count int, err error)
+	GetWishProducts(
+		userId string,
+		last *int,
+		size int,
+	) (products []models.Product, count int, err error)
 
-    InsertProduct(product *models.Product)  (err error)
+	InsertProduct(product *models.Product) (err error)
 
-    UpdateProduct(product *models.Product)  (err error)
+	UpdateProduct(product *models.Product) (err error)
 
-    DeleteProduct(productId int)            (err error)
+	DeleteProduct(productId int) (err error)
 
-    CheckProductExists(productId int)       (exists bool)
+	CheckProductExists(productId int) (exists bool)
 
-    GetOwnerId(productId int)               (userId string)
+	GetOwnerId(productId int) (userId string)
 
-    CheckWishExists(wish *models.Wish)      (exists bool)
+	CheckWishExists(wish *models.Wish) (exists bool)
 
-    InsertWish(wish *models.Wish)           (err error)
+	InsertWish(wish *models.Wish) (err error)
 
-    DeleteWish(wish *models.Wish)           (err error)
+	DeleteWish(wish *models.Wish) (err error)
 }
 
 type ProductRepositoryImpl struct {
-    db *gorm.DB
+	db *gorm.DB
 }
 
 func NewProductRepositoryImpl(
-    db *gorm.DB,
+	db *gorm.DB,
 ) ProductRepository {
-    return &ProductRepositoryImpl{ db: db }
+	return &ProductRepositoryImpl{db: db}
 }
 
 func (r *ProductRepositoryImpl) GetProduct(productId int) (product *models.Product, err error) {
-    product = &models.Product{}
-    err = r.db.Table("v_products").Preload("Images", func(db *gorm.DB) *gorm.DB {
-        return db.Order("product_images.sequence ASC")
-    }).Where("id = ?", productId).First(product).Error
-    return
+	product = &models.Product{}
+	err = r.db.Table("v_products").Preload("Images", func(db *gorm.DB) *gorm.DB {
+		return db.Order("product_images.sequence ASC")
+	}).Where("id = ?", productId).First(product).Error
+	return
 }
 
 func (r *ProductRepositoryImpl) GetProductsByUserID(
-    userId string,
-    last *int,
-    size int,
-    orderBy ...string,
+	userId string,
+	last *int,
+	size int,
+	orderBy ...string,
 ) (products []models.Product, count int, err error) {
 
-    products = []models.Product{}
+	products = []models.Product{}
 
-    query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views").Where("user_id = ?", userId)
+	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname").Where("user_id = ?", userId)
 
-    if(last != nil) {
-        query = query.Where("id < ?", last)
-    }
+	if last != nil {
+		query = query.Where("id < ?", last)
+	}
 
-    r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
-    for _, order := range orderBy {
-        query = query.Order(order)
-    }
-    err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
-        return db.Order("product_images.sequence ASC").Limit(1)
-    }).Limit(size).Find(&products).Error
+	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
+	for _, order := range orderBy {
+		query = query.Order(order)
+	}
+	err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
+		return db.Order("product_images.sequence ASC").Limit(1)
+	}).Limit(size).Find(&products).Error
 
-    return
+	return
 }
 
 func (r *ProductRepositoryImpl) GetProducts(
-    keyword *string,
-    categoryId *int,
-    last *int,
-    size int,
-    orderBy ... string,
+	keyword *string,
+	categoryId *int,
+	last *int,
+	size int,
+	orderBy ...string,
 ) (products []models.Product, count int, err error) {
 
-    products = []models.Product{}
+	products = []models.Product{}
 
-    query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views")
+	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname")
 
-    if(keyword != nil) {
-        query = query.Where("title LIKE ? OR content LIKE ?", "%"+*keyword+"%", "%"+*keyword+"%")
-    }
+	if keyword != nil {
+		query = query.Where("title LIKE ? OR content LIKE ?", "%"+*keyword+"%", "%"+*keyword+"%")
+	}
 
-    if(categoryId != nil) {
-        query = query.Where("category_id = ?", categoryId)
-    }
+	if categoryId != nil {
+		query = query.Where("category_id = ?", categoryId)
+	}
 
-    if(last != nil) {
-        query = query.Where("id < ?", last)
-    }
+	if last != nil {
+		query = query.Where("id < ?", last)
+	}
 
-    r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
+	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
 
-    for _, order := range orderBy {
-        query = query.Order(order)
-    }
+	for _, order := range orderBy {
+		query = query.Order(order)
+	}
 
-    err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
-        return db.Order("product_images.sequence ASC")
-    }).Limit(size).Find(&products).Error
+	err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
+		return db.Order("product_images.sequence ASC")
+	}).Limit(size).Find(&products).Error
 
-    return
+	return
 }
 
 func (r *ProductRepositoryImpl) GetWishProducts(
-    userId string,
-    last *int,
-    size int,
+	userId string,
+	last *int,
+	size int,
 ) (products []models.Product, count int, err error) {
-    
-    products = []models.Product{}
 
-    query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views").
-        Preload("Images", func(db *gorm.DB) *gorm.DB {
-            return db.Order("product_images.sequence ASC")
-        }).
-        Joins("JOIN wishes ON v_products.id = wishes.product_id").
-        Order("v_products.id desc")
+	products = []models.Product{}
 
-    if last != nil {
-        query = query.Where("wishes.product_id < ?", last)
-    }
+	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views").
+		Preload("Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("product_images.sequence ASC")
+		}).
+		Joins("JOIN wishes ON v_products.id = wishes.product_id").
+		Order("v_products.id desc")
 
-    err = query.Where("wishes.user_id = ?", userId).Limit(size).Find(&products).Error
+	if last != nil {
+		query = query.Where("wishes.product_id < ?", last)
+	}
 
-    return
+	err = query.Where("wishes.user_id = ?", userId).Limit(size).Find(&products).Error
+
+	return
 }
 
 func (r *ProductRepositoryImpl) InsertProduct(product *models.Product) (err error) {
-    err = r.db.Create(product).Error
-    return
+	err = r.db.Create(product).Error
+	return
 }
 
 func (r *ProductRepositoryImpl) UpdateProduct(product *models.Product) (err error) {
-    err = r.db.Transaction(func(tx *gorm.DB) error {
-        if err := tx.UpdateColumns(product).Error; err != nil {
-            return err
-        } 
-        if err := tx.Delete(&models.ProductImage{}, "product_id = ?", product.ID).Error; err != nil {
-            return err
-        } 
-        if err := tx.Create(product.Images).Error; err != nil {
-            return err
-        }
-        return nil
-    })
-    return
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.UpdateColumns(product).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&models.ProductImage{}, "product_id = ?", product.ID).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(product.Images).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	return
 }
 
 func (r *ProductRepositoryImpl) DeleteProduct(productId int) (err error) {
-    err = r.db.Delete(&models.Product{}, "id = ?", productId).Error
-    return
+	err = r.db.Delete(&models.Product{}, "id = ?", productId).Error
+	return
 }
 
 func (r *ProductRepositoryImpl) CheckProductExists(productId int) (exists bool) {
-    r.db.Model(&models.Product{}).Select("count(*) > 0").Where("id = ?", productId).Find(&exists)
-    return
+	r.db.Model(&models.Product{}).Select("count(*) > 0").Where("id = ?", productId).Find(&exists)
+	return
 }
 
 func (r *ProductRepositoryImpl) GetOwnerId(productId int) (userId string) {
-    r.db.Model(&models.Product{}).Select("user_id").Where("id = ?", productId).Find(&userId)
-    return
+	r.db.Model(&models.Product{}).Select("user_id").Where("id = ?", productId).Find(&userId)
+	return
 }
 
 func (r *ProductRepositoryImpl) InsertWish(wish *models.Wish) (err error) {
-    err = r.db.Create(wish).Error
-    return
+	err = r.db.Create(wish).Error
+	return
 }
 
 func (r *ProductRepositoryImpl) DeleteWish(wish *models.Wish) (err error) {
-    err = r.db.Delete(models.Wish{}, "user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).Error
-    return
+	err = r.db.Delete(models.Wish{}, "user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).Error
+	return
 }
 
 func (r *ProductRepositoryImpl) CheckWishExists(wish *models.Wish) (exists bool) {
-    r.db.Table("wishes").
-        Select("count(*) > 0").
-        Where("user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).
-        Find(&exists)
-    return
+	r.db.Table("wishes").
+		Select("count(*) > 0").
+		Where("user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).
+		Find(&exists)
+	return
 }
-
