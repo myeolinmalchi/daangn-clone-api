@@ -10,8 +10,8 @@ type Product struct {
 	Content    string         `json:"content,omitempty"`
 	Price      int            `json:"price"`
 	CategoryID int            `json:"categoryId,omitempty"`
-	UserID     string         `json:"userId"`
-	Nickname   string         `json:"nickname,omitempty"`
+	UserID     string         `json:"userId,omitempty"`
+	Nickname   string         `json:"nickname,omitempty" gorm:"->"`
 	Regdate    time.Time      `json:"regdate,omitempty" gorm:"->"`
 	Views      int            `json:"views,omitempty"`
 	Wishes     int            `json:"wishes" gorm:"->"`
