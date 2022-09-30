@@ -80,13 +80,16 @@ func (r *ProductRepositoryImpl) GetProductsByUserID(
 		query = query.Where("id < ?", last)
 	}
 
-	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
 	for _, order := range orderBy {
 		query = query.Order(order)
 	}
-	err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
+	query = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("product_images.sequence ASC").Limit(1)
-	}).Limit(size).Find(&products).Error
+	}).Limit(size)
+
+	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
+
+	err = query.Find(&products).Error
 
 	return
 }
@@ -115,15 +118,17 @@ func (r *ProductRepositoryImpl) GetProducts(
 		query = query.Where("id < ?", last)
 	}
 
-	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
-
 	for _, order := range orderBy {
 		query = query.Order(order)
 	}
 
-	err = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
+	query = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("product_images.sequence ASC")
-	}).Limit(size).Find(&products).Error
+	}).Limit(size)
+
+	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
+
+	err = query.Find(&products).Error
 
 	return
 }
@@ -147,7 +152,11 @@ func (r *ProductRepositoryImpl) GetWishProducts(
 		query = query.Where("wishes.product_id < ?", last)
 	}
 
-	err = query.Where("wishes.user_id = ?", userId).Limit(size).Find(&products).Error
+	query = query.Where("wishes.user_id = ?", userId).Limit(size)
+
+	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
+
+	err = query.Find(&products).Error
 
 	return
 }
