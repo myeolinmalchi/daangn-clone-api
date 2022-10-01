@@ -36,6 +36,7 @@ type ProductController interface {
 type ProductControllerImpl struct {
 	client         *s3.Client
 	productService services.ProductSerivce
+	chatService    services.ChatService
 }
 
 func NewProductControllerImpl(
@@ -76,9 +77,7 @@ func (p *ProductControllerImpl) InsertProduct(c *gin.Context) {
 		file, err := fileHeader.Open()
 		if err != nil {
 			log.Println(err)
-			c.JSON(400, gin.H{
-				"message": err.Error(),
-			})
+			c.JSON(400, gin.H{"message": err})
 			return
 		}
 		files = append(files, file)
@@ -92,9 +91,7 @@ func (p *ProductControllerImpl) InsertProduct(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.JSON(400, gin.H{
-			"message": err.Error(),
-		})
+		c.JSON(400, gin.H{"message": err})
 		return
 	}
 
@@ -107,7 +104,7 @@ func (p *ProductControllerImpl) UpdateProduct(c *gin.Context) {
 	userId := c.Param("userId")
 	product := &models.Product{}
 	if err := c.ShouldBind(product); err != nil {
-		c.JSON(400, gin.H{"message": err.Error()})
+		c.JSON(400, gin.H{"message": err})
 		return
 	}
 
@@ -396,7 +393,7 @@ func (p *ProductControllerImpl) DeleteWish(c *gin.Context) {
 	productId, err := strconv.Atoi(c.Param("productId"))
 
 	if err != nil {
-		c.JSON(400, gin.H{"message": err})
+		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
 		return
 	}
 
@@ -416,4 +413,30 @@ func (p *ProductControllerImpl) DeleteWish(c *gin.Context) {
 	}
 
 	c.Status(200)
+}
+
+// POST /api/v1/users/{userId}/products/{productId}/chat
+func (p *ProductControllerImpl) CreateChat(c *gin.Context) {
+
+	userId := c.Param("userId")
+	productId, err := strconv.Atoi(c.Param("productId"))
+
+	if err != nil {
+		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
+		return
+	}
+
+	chatroomId, err := p.chatService.CreateChatroom(productId, userId)
+
+	if err == gorm.ErrRecordNotFound {
+		c.JSON(404, gin.H{"message": err})
+		return
+	}
+
+	if err != nil {
+		c.JSON(400, gin.H{"message": err})
+		return
+	}
+
+	c.JSON(200, &gin.H{"chatroomId": chatroomId})
 }

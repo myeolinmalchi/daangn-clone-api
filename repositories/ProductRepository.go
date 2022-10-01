@@ -74,7 +74,9 @@ func (r *ProductRepositoryImpl) GetProductsByUserID(
 
 	products = []models.Product{}
 
-	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname").Where("user_id = ?", userId)
+	query := r.db.Table("v_products").
+		Omit("Content", "CategoryID", "Views", "UserID", "Nickname").
+		Where("user_id = ?", userId)
 
 	if last != nil {
 		query = query.Where("id < ?", last)
@@ -173,6 +175,9 @@ func (r *ProductRepositoryImpl) UpdateProduct(product *models.Product) (err erro
 		}
 		if err := tx.Delete(&models.ProductImage{}, "product_id = ?", product.ID).Error; err != nil {
 			return err
+		}
+		if len(product.Images) < 1 {
+			return nil
 		}
 		if err := tx.Create(product.Images).Error; err != nil {
 			return err

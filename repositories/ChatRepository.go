@@ -23,6 +23,8 @@ type ChatRepository interface {
 		size int,
 	) (chats []models.Chat, count int, err error)
 
+	GetChatUserId(chatroomId int, userId string) (chatUserId int)
+
 	InsertChatroom(productId int, buyerId string) (chatroom *models.Chatroom, err error)
 
 	InsertChat(chat *models.Chat) (err error)
@@ -30,6 +32,10 @@ type ChatRepository interface {
 	DeleteChatroom(chatroomId int) (err error)
 
 	DeleteChat(chatId int) (err error)
+
+	CheckChatroomExists(chatroomId int) (exists bool)
+
+	CheckCorrectUser(userId string, chatroomId int) (isCorrect bool)
 }
 
 type ChatRepositoryImpl struct {
@@ -135,6 +141,14 @@ func (r *ChatRepositoryImpl) InsertChatroom(productId int, buyerId string) (chat
 	return
 }
 
+func (r *ChatRepositoryImpl) GetChatUserId(chatroomId int, userId string) (chatUserId int) {
+	r.db.Table("chat_users").
+		Select("id").
+		Where("chatroom_id = ? AND user_id = ?", chatroomId, userId).
+		Find(&chatUserId)
+	return
+}
+
 func (r *ChatRepositoryImpl) InsertChat(chat *models.Chat) (err error) {
 	err = r.db.Create(chat).Error
 	return
@@ -147,5 +161,20 @@ func (r *ChatRepositoryImpl) DeleteChatroom(chatroomId int) (err error) {
 
 func (r *ChatRepositoryImpl) DeleteChat(chatId int) (err error) {
 	err = r.db.Delete(&models.Chat{}, "id = ?", chatId).Error
+	return
+}
+
+func (r *ChatRepositoryImpl) CheckChatroomExists(chatroomId int) (exists bool) {
+	r.db.Model(&models.Chatroom{}).Select("count(*) > 0").Where("id = ?", chatroomId).Find(&exists)
+	return
+}
+
+func (r *ChatRepositoryImpl) CheckCorrectUser(
+	userId string,
+	chatroomId int,
+) (isCorrect bool) {
+	r.db.Model(&models.ChatUser{}).Select("count(*) > 0").
+		Where("user_id = ? AND chatroom_id = ?", userId, chatroomId).
+		Find(&isCorrect)
 	return
 }
