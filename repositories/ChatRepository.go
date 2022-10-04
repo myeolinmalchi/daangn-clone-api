@@ -82,7 +82,6 @@ func (r *ChatRepositoryImpl) GetChatrooms(
 	size int,
 ) (chatrooms []models.Chatroom, count int, err error) {
 	chatrooms = []models.Chatroom{}
-
 	query := r.db.Table("chatrooms").
 		Select("chatrooms.*").
 		Joins("inner join chat_users on chat_users.chatroom_id = chatrooms.id").
@@ -92,13 +91,19 @@ func (r *ChatRepositoryImpl) GetChatrooms(
 		query = query.Where("chatrooms.id < ?", last)
 	}
 
-	query = query.Preload("LastChat", func(db *gorm.DB) *gorm.DB {
-		return db.Table("v_chats").Order("send_date desc")
+	err = query.Preload("Product", func(db *gorm.DB) *gorm.DB {
+		return db.Table("v_products").Select("content", "id", "price", "regdate", "title", "thumbnail")
+	}).Preload("LastChat", func(db *gorm.DB) *gorm.DB {
+		return db.Table("v_chats").Select("chatroom_id", "content", "send_date").Order("send_date desc")
 	}).Preload("Seller", func(db *gorm.DB) *gorm.DB {
-		return db.Where("chat_users.role = ?", models.SELLER).Limit(1)
+		return db.Select("chat_users.user_id", "chat_users.chatroom_id", "users.nickname", "users.profile_image").
+			Joins("JOIN users ON users.id = chat_users.user_id").
+			Where("chat_users.role = ?", models.SELLER)
 	}).Preload("Buyer", func(db *gorm.DB) *gorm.DB {
-		return db.Where("chat_users.role = ?", models.BUYER).Limit(1)
-	}).Limit(size)
+		return db.Select("chat_users.user_id", "chat_users.chatroom_id", "users.nickname", "users.profile_image").
+			Joins("JOIN users ON users.id = chat_users.user_id").
+			Where("chat_users.role = ?", models.BUYER)
+	}).Limit(size).Error
 
 	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
 
@@ -114,30 +119,71 @@ func (r *ChatRepositoryImpl) GetChatroom(chatroomId int) (chatroom *models.Chatr
 		Joins("inner join chat_users on chat_users.chatroom_id = chatrooms.id").
 		Where("chatrooms.id = ?", chatroomId)
 
-	err = query.Preload("LastChat", func(db *gorm.DB) *gorm.DB {
-		return db.Table("v_chats").Order("send_date desc")
+	err = query.Preload("Product", func(db *gorm.DB) *gorm.DB {
+		return db.Table("v_products").Select("content", "id", "price", "regdate", "title", "thumbnail")
+	}).Preload("LastChat", func(db *gorm.DB) *gorm.DB {
+		return db.Table("v_chats").Select("chatroom_id", "content", "send_date").Order("send_date desc")
 	}).Preload("Seller", func(db *gorm.DB) *gorm.DB {
-		return db.Where("chat_users.role = ?", models.SELLER).Limit(1)
+		return db.Select("chat_users.user_id", "chat_users.chatroom_id", "users.nickname", "users.profile_image").
+			Joins("JOIN users ON users.id = chat_users.user_id").
+			Where("chat_users.role = ?", models.SELLER)
 	}).Preload("Buyer", func(db *gorm.DB) *gorm.DB {
-		return db.Where("chat_users.role = ?", models.BUYER).Limit(1)
+		return db.Select("chat_users.user_id", "chat_users.chatroom_id", "users.nickname", "users.profile_image").
+			Joins("JOIN users ON users.id = chat_users.user_id").
+			Where("chat_users.role = ?", models.BUYER)
 	}).First(chatroom).Error
 
 	return
 }
 
 func (r *ChatRepositoryImpl) InsertChatroom(productId int, buyerId string) (chatroom *models.Chatroom, err error) {
-	chatroom = &models.Chatroom{
-		ProductID: productId,
-		Seller: models.ChatUser{
-			UserID: r.productRepo.GetOwnerId(productId),
-			Role:   models.SELLER,
-		},
-		Buyer: models.ChatUser{
-			UserID: buyerId,
-			Role:   models.BUYER,
-		},
-	}
-	err = r.db.Create(chatroom).Error
+
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		err := r.db.
+			Table("chatrooms").
+			Select("chatrooms.*").
+			Joins("INNER JOIN chat_users ON chat_users.chatroom_id = chatrooms.id").
+			Where("chatrooms.product_id = ? AND chat_users.user_id = ?", productId, buyerId).
+			First(&chatroom).
+			Error
+
+		if err == gorm.ErrRecordNotFound {
+			var sellerId string
+			err := tx.Model(&models.Product{}).
+				Select("user_id").
+				Where("id = ?", productId).
+				Find(&sellerId).
+				Error
+
+			if err != nil {
+				return err
+			}
+
+			if sellerId == buyerId {
+				return gorm.ErrInvalidValue
+			}
+
+			chatroom = &models.Chatroom{
+				ProductID: productId,
+				Seller: models.ChatUser{
+					UserID: sellerId,
+					Role:   models.SELLER,
+				},
+				Buyer: models.ChatUser{
+					UserID: buyerId,
+					Role:   models.BUYER,
+				},
+			}
+
+			err = tx.Create(chatroom).Error
+			return err
+		} else if err != nil {
+			return err
+		} else {
+			return nil
+		}
+	})
+
 	return
 }
 

@@ -2,14 +2,14 @@ package chat
 
 import (
 	"carrot-market-clone-api/services"
+	"fmt"
 )
 
 type ChatHub struct {
 	ChatService services.ChatService
-
-	Chatrooms  map[int]*Chatroom
-	Register   chan *Client
-	Unregister chan *Client
+	Chatrooms   map[int]*Chatroom
+	Register    chan *Client
+	Unregister  chan *Client
 }
 
 func NewChatHub(chatService services.ChatService) ChatHub {
@@ -21,7 +21,7 @@ func NewChatHub(chatService services.ChatService) ChatHub {
 	}
 }
 
-func (h *ChatHub) run() {
+func (h *ChatHub) Run() {
 	for {
 		select {
 		case client := <-h.Register:
@@ -29,17 +29,20 @@ func (h *ChatHub) run() {
 			chatroomId := client.Chatroom.ID
 			// 올바른 채팅방 사용자인지 체크
 			if h.ChatService.CheckCorrectUser(userId, chatroomId) {
+				go client.ReadPump()
+				go client.WritePump()
 				if _, ok := h.Chatrooms[chatroomId]; ok {
 					// 채팅방이 존재하는 경우
+					client.Chatroom = h.Chatrooms[chatroomId]
 					client.Chatroom.Clients[client] = true
 				} else {
 					// 채팅방이 존재하지 않는 경우
-					go client.Chatroom.open()
 					h.Chatrooms[chatroomId] = client.Chatroom
+					client.Chatroom.Clients[client] = true
+					go client.Chatroom.open()
 				}
-
-				go client.ReadPump()
-				go client.WritePump()
+			} else {
+				fmt.Println("올바르지 않은 사용자")
 			}
 		case client := <-h.Unregister:
 			chatroomId := client.Chatroom.ID

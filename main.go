@@ -62,6 +62,7 @@ func main() {
 
 	productController := module.InitProductController(db, s3)
 	userController := module.InitUserController(db, s3)
+	chatController := module.InitChatController(db)
 	authMiddleware := module.InitAuthMiddleware(db)
 
 	route.GET("/", func(c *gin.Context) {
@@ -77,7 +78,7 @@ func main() {
 		v1.POST("/users/:userId/products", authMiddleware.UserAuth, productController.InsertProduct)
 		v1.PUT("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.UpdateProduct)
 		v1.DELETE("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.DeleteProduct)
-		v1.POST("/users/:userId/products/:productId/chats", authMiddleware.UserAuth, userController.CreateChatroom)
+		v1.POST("/users/:userId/products/:productId/chatrooms", authMiddleware.UserAuth, chatController.CreateChatroom)
 
 		v1.GET("/users/:userId/products_wish", authMiddleware.UserAuth, productController.GetWishProducts)
 
@@ -90,7 +91,11 @@ func main() {
 		v1.PUT("/users/:userId", authMiddleware.UserAuth, userController.UpdateUser)
 		v1.DELETE("/users/:userId", authMiddleware.UserAuth, userController.DeleteUser)
 
-		v1.GET("/users/:userId/products/:productId/chat", authMiddleware.UserAuth, userController.NewChatConnection)
+		v1.GET("/users/:userId/chatrooms/:chatroomId", authMiddleware.UserAuth, chatController.GetChatroom)
+		v1.GET("/users/:userId/chatrooms/:chatroomId/ws", chatController.NewChatConnection)
+
+		v1.GET("/users/:userId/chatrooms", authMiddleware.UserAuth, chatController.GetChatrooms)
+		v1.GET("/users/:userId/chatrooms/:chatroomId/chats", authMiddleware.UserAuth, chatController.GetChats)
 	}
 	route.Run(":3000")
 }

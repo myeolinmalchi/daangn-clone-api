@@ -2,11 +2,11 @@ package models
 
 type User struct {
 	ID           string   `json:"id,omitempty" gorm:"primaryKey"`
-	PW           string   `json:"pw"`
+	PW           string   `json:"pw,omitempty"`
 	Email        string   `json:"email,omitempty"`
 	Nickname     string   `json:"nickname,omitempty"`
 	ProfileImage string   `json:"profileImage,omitempty"`
-	Devices      []Device `json:"deivce" gorm:"foreignKey:UserID"`
+	Devices      []Device `json:"deivce,omitempty" gorm:"foreignKey:UserID"`
 }
 
 type DeviceType string

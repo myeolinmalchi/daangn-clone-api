@@ -39,10 +39,15 @@ func InitUserController(db *gorm.DB, s3_2 *s3.Client) controllers.UserController
 	awsService := services.NewAWSServiceImpl(s3_2)
 	userService := services.NewUserServiceImpl(userRepository, awsService, s3_2)
 	authService := services.NewAuthServiceImpl(userRepository)
+	userController := controllers.NewUserControllerImpl(userService, authService, awsService, s3_2)
+	return userController
+}
+
+func InitChatController(db *gorm.DB) controllers.ChatController {
 	productRepository := repositories.NewProductRepositoryImpl(db)
 	chatRepository := repositories.NewChatRepositoryImpl(db, productRepository)
 	chatService := services.NewChatServiceImpl(chatRepository)
 	chatHub := chat.NewChatHub(chatService)
-	userController := controllers.NewUserControllerImpl(userService, authService, awsService, chatService, s3_2, chatHub)
-	return userController
+	chatController := controllers.NewChatControllerImpl(chatService, chatHub)
+	return chatController
 }

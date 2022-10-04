@@ -151,12 +151,13 @@ func (p *ProductControllerImpl) DeleteProduct(c *gin.Context) {
 // GET api/v1/products/{product_id}
 func (p *ProductControllerImpl) GetProduct(c *gin.Context) {
 	productId, err := strconv.Atoi(c.Param("productId"))
+	ip := c.ClientIP()
 	if err != nil {
 		c.JSON(400, gin.H{"message": err})
 		return
 	}
 
-	product, err := p.productService.GetProduct(productId)
+	product, err := p.productService.ViewProduct(productId, ip)
 	if err == gorm.ErrRecordNotFound {
 		c.Status(404)
 		return
@@ -228,14 +229,15 @@ func (p *ProductControllerImpl) GetProducts(c *gin.Context) {
 	}
 
 	var products []models.Product
+	var count int
 	if sortStr, sortExists := c.GetQuery("sort"); sortExists {
 		if getProductsFunc := getProductsFuncMap[sortStr]; getProductsFunc != nil {
-			products, _, err = getProductsFunc(keyword, category, last, size)
+			products, count, err = getProductsFunc(keyword, category, last, size)
 		} else {
-			products, _, err = getProductsFuncMap["iddesc"](keyword, category, last, size)
+			products, count, err = getProductsFuncMap["iddesc"](keyword, category, last, size)
 		}
 	} else {
-		products, _, err = getProductsFuncMap["iddesc"](keyword, category, last, size)
+		products, count, err = getProductsFuncMap["iddesc"](keyword, category, last, size)
 	}
 	if err != nil {
 		c.JSON(400, gin.H{"message": err})
@@ -243,7 +245,7 @@ func (p *ProductControllerImpl) GetProducts(c *gin.Context) {
 	}
 
 	c.IndentedJSON(200, gin.H{
-		"size":     size,
+		"size":     count,
 		"products": products,
 	})
 
@@ -287,14 +289,15 @@ func (p *ProductControllerImpl) GetUserProducts(c *gin.Context) {
 	}
 
 	var products []models.Product
+	var count int
 	if sortStr, sortExists := c.GetQuery("sort"); sortExists {
 		if getProductsFunc := getUserProductsFuncMap[sortStr]; getProductsFunc != nil {
-			products, _, err = getProductsFunc(userId, last, size)
+			products, count, err = getProductsFunc(userId, last, size)
 		} else {
-			products, _, err = getUserProductsFuncMap["iddesc"](userId, last, size)
+			products, count, err = getUserProductsFuncMap["iddesc"](userId, last, size)
 		}
 	} else {
-		products, _, err = getUserProductsFuncMap["iddesc"](userId, last, size)
+		products, count, err = getUserProductsFuncMap["iddesc"](userId, last, size)
 	}
 	if err == gorm.ErrRecordNotFound {
 		c.Status(404)
@@ -305,7 +308,7 @@ func (p *ProductControllerImpl) GetUserProducts(c *gin.Context) {
 	}
 
 	c.IndentedJSON(200, gin.H{
-		"size":     size,
+		"size":     count,
 		"userId":   userId,
 		"products": products,
 	})
@@ -337,7 +340,7 @@ func (p *ProductControllerImpl) GetWishProducts(c *gin.Context) {
 		return
 	}
 
-	products, _, err := p.productService.GetWishProducts(userId, last, size)
+	products, count, err := p.productService.GetWishProducts(userId, last, size)
 
 	if err != nil {
 		c.JSON(400, gin.H{"message": err})
@@ -345,7 +348,7 @@ func (p *ProductControllerImpl) GetWishProducts(c *gin.Context) {
 	}
 
 	c.IndentedJSON(200, gin.H{
-		"size":     size,
+		"size":     count,
 		"userId":   userId,
 		"products": products,
 	})
@@ -396,7 +399,6 @@ func (p *ProductControllerImpl) DeleteWish(c *gin.Context) {
 		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
 		return
 	}
-
 	err = p.productService.DeleteWish(&models.Wish{
 		UserID:    userId,
 		ProductID: productId,
@@ -413,30 +415,4 @@ func (p *ProductControllerImpl) DeleteWish(c *gin.Context) {
 	}
 
 	c.Status(200)
-}
-
-// POST /api/v1/users/{userId}/products/{productId}/chat
-func (p *ProductControllerImpl) CreateChat(c *gin.Context) {
-
-	userId := c.Param("userId")
-	productId, err := strconv.Atoi(c.Param("productId"))
-
-	if err != nil {
-		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
-		return
-	}
-
-	chatroomId, err := p.chatService.CreateChatroom(productId, userId)
-
-	if err == gorm.ErrRecordNotFound {
-		c.JSON(404, gin.H{"message": err})
-		return
-	}
-
-	if err != nil {
-		c.JSON(400, gin.H{"message": err})
-		return
-	}
-
-	c.JSON(200, &gin.H{"chatroomId": chatroomId})
 }

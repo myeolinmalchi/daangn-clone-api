@@ -37,15 +37,22 @@ func InitAuthMiddleware(db *gorm.DB) (m middlewares.AuthMiddleware) {
 
 func InitUserController(db *gorm.DB, s3 *s3.Client) (c controllers.UserController) {
 	wire.Build(
-		repositories.NewProductRepositoryImpl,
 		repositories.NewUserRepositoryImpl,
-		repositories.NewChatRepositoryImpl,
 		services.NewAWSServiceImpl,
 		services.NewAuthServiceImpl,
 		services.NewUserServiceImpl,
+		controllers.NewUserControllerImpl,
+	)
+	return
+}
+
+func InitChatController(db *gorm.DB) (c controllers.ChatController) {
+	wire.Build(
+		repositories.NewProductRepositoryImpl,
+		repositories.NewChatRepositoryImpl,
 		services.NewChatServiceImpl,
 		chat.NewChatHub,
-		controllers.NewUserControllerImpl,
+		controllers.NewChatControllerImpl,
 	)
 	return
 }

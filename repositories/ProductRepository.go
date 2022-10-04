@@ -7,7 +7,9 @@ import (
 )
 
 type ProductRepository interface {
-	GetProduct(postId int) (product *models.Product, err error)
+	GetProduct(productId int) (product *models.Product, err error)
+
+	ViewProduct(productId int, ip string) (products *models.Product, err error)
 
 	GetProductsByUserID(
 		userId string,
@@ -38,6 +40,8 @@ type ProductRepository interface {
 
 	CheckProductExists(productId int) (exists bool)
 
+	CheckCorrectCategory(categoryId int) (correct bool)
+
 	GetOwnerId(productId int) (userId string)
 
 	CheckWishExists(wish *models.Wish) (exists bool)
@@ -45,6 +49,8 @@ type ProductRepository interface {
 	InsertWish(wish *models.Wish) (err error)
 
 	DeleteWish(wish *models.Wish) (err error)
+
+	InsertView(view *models.View) (err error)
 }
 
 type ProductRepositoryImpl struct {
@@ -57,11 +63,37 @@ func NewProductRepositoryImpl(
 	return &ProductRepositoryImpl{db: db}
 }
 
+func (r *ProductRepositoryImpl) CheckCorrectCategory(categoryId int) (correct bool) {
+	r.db.Table("categories").Select("count(*) > 0").Where("id = ?", categoryId).Find(&correct)
+	return
+}
+
 func (r *ProductRepositoryImpl) GetProduct(productId int) (product *models.Product, err error) {
 	product = &models.Product{}
-	err = r.db.Table("v_products").Preload("Images", func(db *gorm.DB) *gorm.DB {
+	err = r.db.Table("v_products").Omit("Thumbnail").Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("product_images.sequence ASC")
 	}).Where("id = ?", productId).First(product).Error
+	return
+}
+
+func (r *ProductRepositoryImpl) ViewProduct(productId int, ip string) (product *models.Product, err error) {
+	product = &models.Product{}
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		err := tx.Create(&models.View{
+			ProductID: productId,
+			IP:        ip,
+		}).Error
+		if err != nil {
+			return err
+		}
+		err = tx.Table("v_products").Omit("Thumbnail").Preload("Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("product_images.sequence ASC")
+		}).Where("id = ?", productId).First(product).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	return
 }
 
@@ -75,7 +107,7 @@ func (r *ProductRepositoryImpl) GetProductsByUserID(
 	products = []models.Product{}
 
 	query := r.db.Table("v_products").
-		Omit("Content", "CategoryID", "Views", "UserID", "Nickname").
+		Omit("Content", "CategoryID", "Views", "UserID", "Nickname", "ProfileImage").
 		Where("user_id = ?", userId)
 
 	if last != nil {
@@ -85,9 +117,7 @@ func (r *ProductRepositoryImpl) GetProductsByUserID(
 	for _, order := range orderBy {
 		query = query.Order(order)
 	}
-	query = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
-		return db.Order("product_images.sequence ASC").Limit(1)
-	}).Limit(size)
+	query = query.Limit(size)
 
 	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
 
@@ -106,7 +136,7 @@ func (r *ProductRepositoryImpl) GetProducts(
 
 	products = []models.Product{}
 
-	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname")
+	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname", "ProfileImage")
 
 	if keyword != nil {
 		query = query.Where("title LIKE ? OR content LIKE ?", "%"+*keyword+"%", "%"+*keyword+"%")
@@ -124,9 +154,7 @@ func (r *ProductRepositoryImpl) GetProducts(
 		query = query.Order(order)
 	}
 
-	query = query.Preload("Images", func(db *gorm.DB) *gorm.DB {
-		return db.Order("product_images.sequence ASC")
-	}).Limit(size)
+	query = query.Limit(size)
 
 	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
 
@@ -143,10 +171,7 @@ func (r *ProductRepositoryImpl) GetWishProducts(
 
 	products = []models.Product{}
 
-	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views").
-		Preload("Images", func(db *gorm.DB) *gorm.DB {
-			return db.Order("product_images.sequence ASC")
-		}).
+	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname", "ProfileImage").
 		Joins("JOIN wishes ON v_products.id = wishes.product_id").
 		Order("v_products.id desc")
 
@@ -209,6 +234,11 @@ func (r *ProductRepositoryImpl) InsertWish(wish *models.Wish) (err error) {
 
 func (r *ProductRepositoryImpl) DeleteWish(wish *models.Wish) (err error) {
 	err = r.db.Delete(models.Wish{}, "user_id = ? AND product_id = ?", wish.UserID, wish.ProductID).Error
+	return
+}
+
+func (r *ProductRepositoryImpl) InsertView(view *models.View) (err error) {
+	err = r.db.Create(view).Error
 	return
 }
 

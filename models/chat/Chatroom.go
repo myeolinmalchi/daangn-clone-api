@@ -2,7 +2,7 @@ package chat
 
 type Chatroom struct {
 	ID      int
-	Send    chan []byte
+	Send    chan Chat
 	Clients map[*Client]bool
 	Hub     *ChatHub
 }

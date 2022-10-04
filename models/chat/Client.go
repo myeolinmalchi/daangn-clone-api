@@ -1,8 +1,8 @@
 package chat
 
 import (
-	"bytes"
-	"log"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -30,8 +30,13 @@ var (
 type Client struct {
 	UserID   string
 	Chatroom *Chatroom
-	Send     chan []byte
+	Send     chan Chat
 	Conn     *websocket.Conn
+}
+
+type Chat struct {
+	Message string `json:"message"`
+	UserID  string `json:"userId"`
 }
 
 func (c *Client) ReadPump() {
@@ -40,21 +45,27 @@ func (c *Client) ReadPump() {
 		c.Conn.Close()
 	}()
 
-	for {
-		_, message, err := c.Conn.ReadMessage()
-		if err != nil {
-			log.Printf(err.Error())
-			break
-		}
-		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		content := string(message[:])
-		err = c.Chatroom.Hub.ChatService.InsertChat(c.Chatroom.ID, c.UserID, content)
+	c.Conn.SetReadLimit(maxMessageSize)
+	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.Conn.SetPongHandler(func(string) error {
+		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
 
+	for {
+		chat := Chat{}
+		err := c.Conn.ReadJSON(&chat)
 		if err != nil {
-			log.Printf(err.Error())
+			fmt.Println(err)
 			break
 		}
-		c.Chatroom.Send <- message
+		err = c.Chatroom.Hub.ChatService.InsertChat(c.Chatroom.ID, chat.UserID, chat.Message)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+
+		c.Chatroom.Send <- chat
 	}
 }
 
@@ -72,17 +83,28 @@ func (c *Client) WritePump() {
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-
 			w, err := c.Conn.NextWriter(websocket.TextMessage)
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			jsonString, err := json.Marshal(message)
+			if err != nil {
+				return
+			}
+			w.Write(jsonString)
 
 			n := len(c.Send)
 			for i := 0; i < n; i++ {
 				w.Write(newline)
-				w.Write(<-c.Send)
+				msg, err := json.Marshal(<-c.Send)
+				if err != nil {
+					return
+				}
+				w.Write(msg)
+			}
+
+			if err := w.Close(); err != nil {
+				return
 			}
 		case <-ticker.C:
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))

@@ -30,6 +30,8 @@ type GetUserProductsFunc func(
 type ProductSerivce interface {
 	GetProduct(productId int) (product *models.Product, err error)
 
+	ViewProduct(productId int, ip string) (product *models.Product, err error)
+
 	GetProductsOrderByPrice(asc bool) GetProductsFunc
 
 	GetProductsOrderByID(asc bool) GetProductsFunc
@@ -98,6 +100,11 @@ func (s *ProductServiceImpl) GetProduct(productId int) (product *models.Product,
 		return nil, err
 	}
 
+	return
+}
+
+func (s *ProductServiceImpl) ViewProduct(productId int, ip string) (product *models.Product, err error) {
+	product, err = s.productRepo.ViewProduct(productId, ip)
 	return
 }
 
@@ -188,16 +195,30 @@ func (s *ProductServiceImpl) ValidateProduct(product *models.Product) (result *m
 			return nil
 		}
 		if price < 1000 {
-			msg = "가격은 1000원 이상이어야 합니다."
+			msg = "가격은 0원 이상이어야 합니다."
+			return &msg
+		}
+		return nil
+	}
+
+	checkCategory := func(categoryId int) *string {
+		var msg string
+		if categoryId == 0 {
+			msg = "카테고리는 필수 항목입니다."
+			return &msg
+		}
+		if !s.productRepo.CheckCorrectCategory(categoryId) {
+			msg = "존재하지 않는 카테고리입니다."
 			return &msg
 		}
 		return nil
 	}
 
 	result = &models.ProductValidationResult{
-		Title:   checkTitle(product.Title),
-		Content: checkContent(product.Content),
-		Price:   checkPrice(product.Price),
+		Title:      checkTitle(product.Title),
+		Content:    checkContent(product.Content),
+		Price:      checkPrice(product.Price),
+		CategoryID: checkCategory(product.CategoryID),
 	}
 	return result.GetOrNil()
 }

@@ -106,8 +106,8 @@ func (s *UserServiceImpl) checkPW(pw string) *string {
 
 func (s *UserServiceImpl) checkNickname(nickname string) *string {
 	var msg string
-	if len(nickname) > 30 {
-		msg = "별칭은 30자 이하까지 입력할 수 있습니다."
+	if len(nickname) > 10 {
+		msg = "별칭은 10자 이하까지 입력할 수 있습니다."
 	} else if len(nickname) < 1 {
 		msg = "별칭은 필수 항목입니다."
 	} else if s.userRepo.CheckUserExists("nickname", nickname) {
@@ -242,7 +242,10 @@ func (s *UserServiceImpl) Delete(userId string) (err error) {
 
 	filename := strings.Split(user.ProfileImage, "/")[4]
 
-	s.awsService.DeleteFile(filename)
+	err = s.awsService.DeleteFile(filename)
+	if err != nil {
+		return
+	}
 
 	return s.userRepo.DeleteUser(userId)
 }

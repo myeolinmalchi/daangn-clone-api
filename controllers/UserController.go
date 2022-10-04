@@ -5,13 +5,11 @@ import (
 	"carrot-market-clone-api/models/chat"
 	"carrot-market-clone-api/services"
 	"mime/multipart"
-	"strconv"
 
 	"encoding/json"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 )
 
@@ -21,8 +19,6 @@ type UserController interface {
 	UpdateUser(c *gin.Context)
 	DeleteUser(c *gin.Context)
 	GetUserData(c *gin.Context)
-	NewChatConnection(c *gin.Context)
-	CreateChatroom(c *gin.Context)
 }
 
 type UserControllerImpl struct {
@@ -38,17 +34,13 @@ func NewUserControllerImpl(
 	userService services.UserService,
 	authService services.AuthService,
 	awsService services.AWSService,
-	chatService services.ChatService,
 	client *s3.Client,
-	chatHub chat.ChatHub,
 ) UserController {
 	return &UserControllerImpl{
 		userService: userService,
 		authService: authService,
 		awsService:  awsService,
-		chatService: chatService,
 		client:      client,
-		chatHub:     chatHub,
 	}
 }
 
@@ -218,65 +210,4 @@ func (u *UserControllerImpl) GetUserData(c *gin.Context) {
 	}
 
 	c.IndentedJSON(200, user)
-}
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-
-// WS /api/v1/users/{userId}/chats/{chatroomId}
-func (u *UserControllerImpl) NewChatConnection(c *gin.Context) {
-
-	userId := c.Param("userId")
-	chatroomId, err := strconv.Atoi(c.Param("chatroomId"))
-
-	if err != nil {
-		c.JSON(400, gin.H{"message": "chatroomdId는 정수값이어야 합니다."})
-		return
-	}
-
-	w := c.Writer
-	r := c.Request
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		c.JSON(400, gin.H{"message": "연결을 생성하지 못했습니다."})
-		return
-	}
-	chatroom := &chat.Chatroom{
-		ID: chatroomId,
-	}
-
-	u.chatHub.Register <- &chat.Client{
-		Chatroom: chatroom,
-		UserID:   userId,
-		Send:     make(chan []byte),
-		Conn:     conn,
-	}
-	c.Status(200)
-}
-
-// POST /api/v1/users/{userId}/products/{productId}/chats
-func (u *UserControllerImpl) CreateChatroom(c *gin.Context) {
-	userId := c.Param("userId")
-	productId, err := strconv.Atoi(c.Param("productId"))
-
-	if err != nil {
-		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
-		return
-	}
-
-	chatroomId, err := u.chatService.CreateChatroom(productId, userId)
-
-	if err == gorm.ErrRecordNotFound {
-		c.JSON(404, gin.H{"message": err})
-		return
-	}
-
-	if err != nil {
-		c.JSON(400, gin.H{"message": err})
-		return
-	}
-
-	c.JSON(201, gin.H{"chatroomId": chatroomId})
 }
