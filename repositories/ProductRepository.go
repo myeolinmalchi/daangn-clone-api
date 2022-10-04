@@ -79,10 +79,22 @@ func (r *ProductRepositoryImpl) GetProduct(productId int) (product *models.Produ
 func (r *ProductRepositoryImpl) ViewProduct(productId int, ip string) (product *models.Product, err error) {
 	product = &models.Product{}
 	err = r.db.Transaction(func(tx *gorm.DB) error {
-		err := tx.Create(&models.View{
+
+		var exists bool
+		err := tx.Model(&models.Product{}).Select("count(*) > 0").Where("id = ?", productId).Find(&exists).Error
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return gorm.ErrRecordNotFound
+		}
+
+		err = tx.Create(&models.View{
 			ProductID: productId,
 			IP:        ip,
 		}).Error
+
 		if err != nil {
 			return err
 		}
