@@ -8,15 +8,15 @@ type Product struct {
 	ID           int            `json:"id,omitempty" gorm:"primaryKey"`
 	Title        string         `json:"title"`
 	Content      string         `json:"content,omitempty"`
-	Price        int            `json:"price"`
+	Price        *int           `json:"price,omitempty" gorm:"column:price"`
 	CategoryID   int            `json:"categoryId,omitempty"`
 	UserID       string         `json:"userId,omitempty"`
 	Nickname     string         `json:"nickname,omitempty" gorm:"->"`
 	ProfileImage string         `json:"profileImage,omitempty" gorm:"->"`
 	Regdate      time.Time      `json:"regdate,omitempty" gorm:"->"`
-	Views        int            `json:"views,omitempty" gorm:"->"`
-	Wishes       int            `json:"wishes,omitempty" gorm:"->"`
-	Chatrooms    int            `json:"chatrooms,omitempty" gorm:"->"`
+	Views        int            `json:"views" gorm:"->"`
+	Wishes       int            `json:"wishes" gorm:"->"`
+	Chatrooms    int            `json:"chatrooms" gorm:"->"`
 	Thumbnail    string         `json:"thumbnail,omitempty" gorm:"->"`
 	Images       []ProductImage `json:"images,omitempty" gorm:"foreignKey:ProductID"`
 }

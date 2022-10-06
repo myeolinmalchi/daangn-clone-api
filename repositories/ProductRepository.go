@@ -249,12 +249,21 @@ func (r *ProductRepositoryImpl) GetWishProducts(
 
 	products = []models.Product{}
 
-	query := r.db.Table("v_products").Omit("Content", "CategoryID", "Views", "UserID", "Nickname", "ProfileImage").
+	query := r.db.Table("v_products").
+		Select(
+			"v_products.id",
+			"v_products.title",
+			"v_products.regdate",
+			"v_products.views",
+			"v_products.wishes",
+			"v_products.chatrooms",
+			"v_products.thumbnail",
+		).
 		Joins("JOIN wishes ON v_products.id = wishes.product_id").
 		Order("v_products.id desc")
 
 	if last != nil {
-		query = query.Where("wishes.product_id < ?", last)
+		query = query.Where("v_products.id < ?", last)
 	}
 
 	query = query.Where("wishes.user_id = ?", userId).Limit(size)

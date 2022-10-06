@@ -184,12 +184,12 @@ func (s *ProductServiceImpl) ValidateProduct(product *models.Product) (result *m
 		return nil
 	}
 
-	checkPrice := func(price int) *string {
-		var msg string
-		if price == 0 {
+	checkPrice := func(price *int) *string {
+		if price == nil {
 			return nil
 		}
-		if price < 1000 {
+		var msg string
+		if *price < 0 {
 			msg = "가격은 0원 이상이어야 합니다."
 			return &msg
 		}
