@@ -24,7 +24,7 @@ type Chatroom struct {
 	Seller    ChatUser `json:"seller,omitempty" gorm:"foreignKey:ChatroomID"`
 	Buyer     ChatUser `json:"buyer,omitempty" gorm:"foreignKey:ChatroomID"`
 	Product   Product  `json:"product,omitempty" gorm:"foreignKey:ID;references:ProductID"`
-	LastChat  Chat     `json:"lastChat,omitempty" gorm:"->"`
+	LastChat  *Chat    `json:"lastChat,omitempty" gorm:"->"`
 }
 
 type ChatUser struct {

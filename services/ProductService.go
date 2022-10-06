@@ -32,6 +32,8 @@ type ProductSerivce interface {
 
 	ViewProduct(productId int, ip string) (product *models.Product, err error)
 
+	ViewProductW(productId int, userId, ip string) (product *models.ProductW, err error)
+
 	GetProductsOrderByPrice(asc bool) GetProductsFunc
 
 	GetProductsOrderByID(asc bool) GetProductsFunc
@@ -87,24 +89,17 @@ func NewProductServiceImpl(
 }
 
 func (s *ProductServiceImpl) GetProduct(productId int) (product *models.Product, err error) {
-
 	product, err = s.productRepo.GetProduct(productId)
-	if err != nil {
-		return nil, err
-	}
-
-	product.Views += 1
-
-	err = s.productRepo.UpdateProduct(product)
-	if err != nil {
-		return nil, err
-	}
-
 	return
 }
 
 func (s *ProductServiceImpl) ViewProduct(productId int, ip string) (product *models.Product, err error) {
 	product, err = s.productRepo.ViewProduct(productId, ip)
+	return
+}
+
+func (s *ProductServiceImpl) ViewProductW(productId int, userId, ip string) (product *models.ProductW, err error) {
+	product, err = s.productRepo.ViewProductW(productId, userId, ip)
 	return
 }
 

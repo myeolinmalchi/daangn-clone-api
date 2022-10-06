@@ -75,6 +75,7 @@ func main() {
 		v1.GET("/products", productController.GetProducts)
 
 		v1.GET("/users/:userId/products", productController.GetUserProducts)
+		v1.GET("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.GetProductW)
 		v1.POST("/users/:userId/products", authMiddleware.UserAuth, productController.InsertProduct)
 		v1.PUT("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.UpdateProduct)
 		v1.DELETE("/users/:userId/products/:productId", authMiddleware.UserAuth, productController.DeleteProduct)

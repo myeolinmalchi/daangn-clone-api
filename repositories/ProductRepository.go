@@ -9,7 +9,11 @@ import (
 type ProductRepository interface {
 	GetProduct(productId int) (product *models.Product, err error)
 
-	ViewProduct(productId int, ip string) (products *models.Product, err error)
+	ViewProduct(productId int, ip string) (product *models.Product, err error)
+
+	GetProductW(productId int, userId string) (product *models.ProductW, err error)
+
+	ViewProductW(productId int, userId, ip string) (product *models.ProductW, err error)
 
 	GetProductsByUserID(
 		userId string,
@@ -73,6 +77,68 @@ func (r *ProductRepositoryImpl) GetProduct(productId int) (product *models.Produ
 	err = r.db.Table("v_products").Omit("Thumbnail").Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("product_images.sequence ASC")
 	}).Where("id = ?", productId).First(product).Error
+	return
+}
+
+func (r *ProductRepositoryImpl) GetProductW(productId int, userId string) (product *models.ProductW, err error) {
+	product = &models.ProductW{}
+
+	err = r.db.Table("v_products").
+		Joins("LEFT JOIN chatrooms ON chatrooms.product_id = v_products.id").
+		Joins("LEFT JOIN wishes ON wishes.product_id = v_products.id AND wishes.user_id = ?", userId).
+		Select("v_products.*", "DISTINCT chatrooms.id AS chatroom_id", "count(DISTINCT wishes.*) > 0 AS wished").
+		Omit("Thumbnail").
+		Preload("Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("product_images.sequence ASC")
+		}).
+		Where("id = ?", productId).First(product).Error
+
+	return
+}
+
+func (r *ProductRepositoryImpl) ViewProductW(
+	productId int,
+	userId, ip string,
+) (product *models.ProductW, err error) {
+	product = &models.ProductW{}
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+
+		var exists bool
+		err := tx.Model(&models.Product{}).
+			Select("count(*) > 0").
+			Where("id = ?", productId).
+			Find(&exists).
+			Error
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return gorm.ErrRecordNotFound
+		}
+
+		err = tx.Create(&models.View{
+			ProductID: productId,
+			IP:        ip,
+		}).Error
+
+		if err != nil {
+			return err
+		}
+		err = tx.Table("v_products").
+			Joins("LEFT JOIN chatrooms ON chatrooms.product_id = v_products.id").
+			Joins("LEFT JOIN wishes ON wishes.product_id = v_products.id AND wishes.user_id = ?", userId).
+			Select("v_products.*", "chatrooms.id AS chatroom_id", "COUNT(wishes.id) > 0 AS wished").
+			Omit("Thumbnail").
+			Preload("Images", func(db *gorm.DB) *gorm.DB {
+				return db.Order("product_images.sequence ASC")
+			}).
+			Where("v_products.id = ?", productId).First(product).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	return
 }
 

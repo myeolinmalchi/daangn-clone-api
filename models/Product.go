@@ -21,6 +21,12 @@ type Product struct {
 	Images       []ProductImage `json:"images,omitempty" gorm:"foreignKey:ProductID"`
 }
 
+type ProductW struct {
+	Product
+	Wished     bool `json:"wished,omitempty"`
+	ChatroomID int  `json:"chatroomId,omitempty"`
+}
+
 type ProductImage struct {
 	ProductID int    `json:"productId,omitempty"`
 	ID        int    `json:"id,omitempty"`

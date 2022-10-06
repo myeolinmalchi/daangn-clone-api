@@ -22,6 +22,8 @@ type ProductController interface {
 
 	GetProduct(c *gin.Context)
 
+	GetProductW(c *gin.Context)
+
 	GetProducts(c *gin.Context)
 
 	GetUserProducts(c *gin.Context)
@@ -153,11 +155,35 @@ func (p *ProductControllerImpl) GetProduct(c *gin.Context) {
 	productId, err := strconv.Atoi(c.Param("productId"))
 	ip := c.ClientIP()
 	if err != nil {
-		c.JSON(400, gin.H{"message": err})
+		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
 		return
 	}
 
 	product, err := p.productService.ViewProduct(productId, ip)
+	if err == gorm.ErrRecordNotFound {
+		c.Status(404)
+		return
+	}
+	if err != nil {
+		c.JSON(400, gin.H{"message": err})
+		return
+	}
+
+	c.IndentedJSON(200, product)
+}
+
+// GET /api/v1/users/{userId}/products/{productId}
+func (p *ProductControllerImpl) GetProductW(c *gin.Context) {
+	userId := c.Param("userId")
+	productId, err := strconv.Atoi(c.Param("productId"))
+	ip := c.ClientIP()
+	if err != nil {
+		c.JSON(400, gin.H{"message": err})
+		return
+	}
+
+	product, err := p.productService.ViewProductW(productId, userId, ip)
+
 	if err == gorm.ErrRecordNotFound {
 		c.Status(404)
 		return
@@ -361,7 +387,7 @@ func (p *ProductControllerImpl) WishProduct(c *gin.Context) {
 	productId, err := strconv.Atoi(c.Param("productId"))
 
 	if err != nil {
-		c.JSON(400, gin.H{"message": err})
+		c.JSON(400, gin.H{"message": "productId는 정수값이어야 합니다."})
 		return
 	}
 

@@ -212,7 +212,6 @@ func (t *ChatControllerImpl) GetChats(c *gin.Context) {
 	} else {
 		last = nil
 	}
-
 	chats, count, err := t.chatService.GetChats(chatroomId, last, size)
 
 	if err == gorm.ErrRecordNotFound {
