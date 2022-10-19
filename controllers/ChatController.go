@@ -59,18 +59,21 @@ func (t *ChatControllerImpl) NewChatConnection(c *gin.Context) {
 		return
 	}
 
-	chatroom := &chat.Chatroom{
-		ID:      chatroomId,
-		Hub:     &t.chatHub,
-		Clients: make(map[*chat.Client]bool),
-		Send:    make(chan chat.Chat),
+	if ok := t.chatService.CheckCorrectUser(userId, chatroomId); !ok {
+		c.JSON(403, gin.H{"message": "해당 채팅방에 대해 접근 권한이 없습니다."})
+		return
 	}
 
 	t.chatHub.Register <- &chat.Client{
-		Chatroom: chatroom,
-		UserID:   userId,
-		Send:     make(chan chat.Chat),
-		Conn:     conn,
+		Chatroom: &chat.Chatroom{
+			ID:      chatroomId,
+			Hub:     &t.chatHub,
+			Clients: make(map[*chat.Client]bool),
+			Send:    make(chan chat.Chat),
+		},
+		UserID: userId,
+		Send:   make(chan chat.Chat),
+		Conn:   conn,
 	}
 	c.Status(200)
 }
@@ -106,6 +109,7 @@ func (t *ChatControllerImpl) CreateChatroom(c *gin.Context) {
 
 }
 
+// Done
 // GET /api/v1/users/{userId}/chatrooms/{chatroomId}
 func (t *ChatControllerImpl) GetChatroom(c *gin.Context) {
 	userId := c.Param("userId")
@@ -132,6 +136,7 @@ func (t *ChatControllerImpl) GetChatroom(c *gin.Context) {
 
 }
 
+// Done
 // GET /api/v1/users/{userId}/chatrooms
 func (t *ChatControllerImpl) GetChatrooms(c *gin.Context) {
 	userId := c.Param("userId")
@@ -176,6 +181,7 @@ func (t *ChatControllerImpl) GetChatrooms(c *gin.Context) {
 	})
 }
 
+// Done
 // GET /api/v1/users/{userId}/chatrooms/{chatroomId}/chats
 func (t *ChatControllerImpl) GetChats(c *gin.Context) {
 	userId := c.Param("userId")

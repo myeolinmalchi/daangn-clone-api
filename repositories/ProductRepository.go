@@ -86,7 +86,19 @@ func (r *ProductRepositoryImpl) GetProductW(productId int, userId string) (produ
 	err = r.db.Table("v_products").
 		Joins("LEFT JOIN chatrooms ON chatrooms.product_id = v_products.id").
 		Joins("LEFT JOIN wishes ON wishes.product_id = v_products.id AND wishes.user_id = ?", userId).
-		Select("v_products.*", "DISTINCT chatrooms.id AS chatroom_id", "count(DISTINCT wishes.*) > 0 AS wished").
+		Select(
+			"v_products.id",
+			"v_products.title",
+			"v_products.content",
+			"v_products.price",
+			"v_products.category_id",
+			"v_products.user_id",
+			"v_products.nickname",
+			"v_products.profile_image",
+			"v_products.regdate",
+			"DISTINCT chatrooms.id AS chatroom_id",
+			"count(DISTINCT wishes.*) > 0 AS wished",
+		).
 		Omit("Thumbnail").
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
 			return db.Order("product_images.sequence ASC")
