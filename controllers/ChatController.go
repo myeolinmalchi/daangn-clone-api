@@ -17,7 +17,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type ChatController interface {
-	NewChatConnection(c *gin.Context)
+	CreateConnection(c *gin.Context)
 	CreateChatroom(c *gin.Context)
 	GetChatroom(c *gin.Context)
 	GetChatrooms(c *gin.Context)
@@ -40,15 +40,9 @@ func NewChatControllerImpl(
 	}
 }
 
-// GET ws:// ~ /api/v1/users/{userId}/chatrooms/{chatroomId}/ws
-func (t *ChatControllerImpl) NewChatConnection(c *gin.Context) {
+// GET ws:// ~ /api/v1/users/{userId}/chat
+func (t *ChatControllerImpl) CreateConnection(c *gin.Context) {
 	userId := c.Param("userId")
-	chatroomId, err := strconv.Atoi(c.Param("chatroomId"))
-
-	if err != nil {
-		c.JSON(400, gin.H{"message": "chatroomdId는 정수값이어야 합니다."})
-		return
-	}
 
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	w := c.Writer
@@ -59,22 +53,14 @@ func (t *ChatControllerImpl) NewChatConnection(c *gin.Context) {
 		return
 	}
 
-	if ok := t.chatService.CheckCorrectUser(userId, chatroomId); !ok {
-		c.JSON(403, gin.H{"message": "해당 채팅방에 대해 접근 권한이 없습니다."})
-		return
+	t.chatHub.Register <- &chat.Client{
+		UserID:    userId,
+		Chatrooms: make(map[int]*chat.Chatroom),
+		Send:      make(chan chat.Chat),
+		Conn:      conn,
+		Hub:       &t.chatHub,
 	}
 
-	t.chatHub.Register <- &chat.Client{
-		Chatroom: &chat.Chatroom{
-			ID:      chatroomId,
-			Hub:     &t.chatHub,
-			Clients: make(map[*chat.Client]bool),
-			Send:    make(chan chat.Chat),
-		},
-		UserID: userId,
-		Send:   make(chan chat.Chat),
-		Conn:   conn,
-	}
 	c.Status(200)
 }
 
@@ -181,7 +167,6 @@ func (t *ChatControllerImpl) GetChatrooms(c *gin.Context) {
 	})
 }
 
-// Done
 // GET /api/v1/users/{userId}/chatrooms/{chatroomId}/chats
 func (t *ChatControllerImpl) GetChats(c *gin.Context) {
 	userId := c.Param("userId")

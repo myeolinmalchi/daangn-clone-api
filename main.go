@@ -93,7 +93,7 @@ func main() {
 		v1.DELETE("/users/:userId", authMiddleware.UserAuth, userController.DeleteUser)
 
 		v1.GET("/users/:userId/chatrooms/:chatroomId", authMiddleware.UserAuth, chatController.GetChatroom)
-		v1.GET("/users/:userId/chatrooms/:chatroomId/ws", chatController.NewChatConnection)
+		v1.GET("/users/:userId/chat", chatController.CreateConnection)
 
 		v1.GET("/users/:userId/chatrooms", authMiddleware.UserAuth, chatController.GetChatrooms)
 		v1.GET("/users/:userId/chatrooms/:chatroomId/chats", authMiddleware.UserAuth, chatController.GetChats)

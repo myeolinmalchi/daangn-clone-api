@@ -13,7 +13,7 @@ type ChatService interface {
 	GetChatrooms(
 		userId string,
 		last *int,
-		size int,
+		size *int,
 	) (chatrooms []models.Chatroom, count int, err error)
 	GetChats(
 		chatroomId int,
@@ -67,7 +67,7 @@ func (s *ChatServiceImpl) GetChats(
 func (s *ChatServiceImpl) GetChatrooms(
 	userId string,
 	last *int,
-	size int,
+	size *int,
 ) (chatrooms []models.Chatroom, count int, err error) {
 	return s.chatRepo.GetChatrooms(userId, last, size)
 }

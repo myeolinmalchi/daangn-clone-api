@@ -1,23 +1,17 @@
 package chat
 
 type Chatroom struct {
-	ID      int
-	Send    chan Chat
-	Clients map[*Client]bool
-	Hub     *ChatHub
+	ChatroomID int
+	Clients    map[*Client]bool
+	Send       chan Chat
 }
 
-func (r *Chatroom) open() {
+func (c *Chatroom) Open() {
 	for {
 		select {
-		case message := <-r.Send:
-			for client := range r.Clients {
-				select {
-				case client.Send <- message:
-				default:
-					close(client.Send)
-					delete(r.Clients, client)
-				}
+		case message, _ := <-c.Send:
+			for client := range c.Clients {
+				client.Send <- message
 			}
 		}
 	}

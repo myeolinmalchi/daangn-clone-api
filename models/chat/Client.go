@@ -28,20 +28,22 @@ var (
 )
 
 type Client struct {
-	UserID   string
-	Chatroom *Chatroom
-	Send     chan Chat
-	Conn     *websocket.Conn
+	UserID    string
+	Chatrooms map[int]*Chatroom
+	Send      chan Chat
+	Conn      *websocket.Conn
+	Hub       *ChatHub
 }
 
 type Chat struct {
-	Message string `json:"message"`
-	UserID  string `json:"userId"`
+	Message    string `json:"message"`
+	UserID     string `json:"userId"`
+	ChatroomID int    `json:"chatroomId"`
 }
 
 func (c *Client) ReadPump() {
 	defer func() {
-		c.Chatroom.Hub.Unregister <- c
+		c.Hub.Unregister <- c
 		c.Conn.Close()
 	}()
 
@@ -59,13 +61,15 @@ func (c *Client) ReadPump() {
 			fmt.Println(err)
 			break
 		}
-		err = c.Chatroom.Hub.ChatService.InsertChat(c.Chatroom.ID, chat.UserID, chat.Message)
+		err = c.Hub.ChatService.InsertChat(chat.ChatroomID, chat.UserID, chat.Message)
 		if err != nil {
 			fmt.Println(err)
 			break
 		}
 
-		c.Chatroom.Send <- chat
+		if chatroom, ok := c.Chatrooms[chat.ChatroomID]; ok {
+			chatroom.Send <- chat
+		}
 	}
 }
 
@@ -75,6 +79,7 @@ func (c *Client) WritePump() {
 		ticker.Stop()
 		c.Conn.Close()
 	}()
+
 	for {
 		select {
 		case message, ok := <-c.Send:

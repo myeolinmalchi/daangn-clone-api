@@ -12,7 +12,7 @@ type ChatRepository interface {
 	GetChatrooms(
 		userId string,
 		last *int,
-		size int,
+		size *int,
 	) (chatrooms []models.Chatroom, count int, err error)
 
 	GetChatroom(chatroomId int) (chatroom *models.Chatroom, err error)
@@ -79,7 +79,7 @@ func (r *ChatRepositoryImpl) GetChats(
 func (r *ChatRepositoryImpl) GetChatrooms(
 	userId string,
 	last *int,
-	size int,
+	size *int,
 ) (chatrooms []models.Chatroom, count int, err error) {
 	chatrooms = []models.Chatroom{}
 	query := r.db.Table("chatrooms").
@@ -91,7 +91,7 @@ func (r *ChatRepositoryImpl) GetChatrooms(
 		query = query.Where("chatrooms.id < ?", last)
 	}
 
-	err = query.Preload("Product", func(db *gorm.DB) *gorm.DB {
+	query = query.Preload("Product", func(db *gorm.DB) *gorm.DB {
 		return db.Table("v_products").Select("content", "id", "price", "regdate", "title", "thumbnail")
 	}).Preload("LastChat", func(db *gorm.DB) *gorm.DB {
 		return db.Table("v_chats").Select("chatroom_id", "content", "send_date").Order("send_date desc")
@@ -103,7 +103,11 @@ func (r *ChatRepositoryImpl) GetChatrooms(
 		return db.Select("chat_users.user_id", "chat_users.chatroom_id", "users.nickname", "users.profile_image").
 			Joins("JOIN users ON users.id = chat_users.user_id").
 			Where("chat_users.role = ?", models.BUYER)
-	}).Limit(size).Error
+	})
+
+	if size != nil {
+		query = query.Limit(*size)
+	}
 
 	r.db.Table("(?) as a", query).Select("count(*)").Find(&count)
 
